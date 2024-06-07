@@ -39,9 +39,9 @@ import com.microsoft.graph.authentication.IAuthenticationProvider;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 
-@Slf4j
+@Log4j2
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder

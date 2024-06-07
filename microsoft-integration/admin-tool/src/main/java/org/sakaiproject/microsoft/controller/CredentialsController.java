@@ -30,8 +30,6 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import lombok.extern.slf4j.Slf4j;
-
 
 /**
  * CredentialsController
@@ -39,7 +37,6 @@ import lombok.extern.slf4j.Slf4j;
  * This is the controller used by Spring MVC to handle credential related requests
  * 
  */
-@Slf4j
 @Controller
 public class CredentialsController {
 	

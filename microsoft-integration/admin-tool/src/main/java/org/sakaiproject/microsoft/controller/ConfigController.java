@@ -24,7 +24,6 @@ import org.sakaiproject.microsoft.api.MicrosoftConfigurationService;
 import org.sakaiproject.microsoft.api.model.MicrosoftConfigItem;
 import org.sakaiproject.microsoft.api.persistence.MicrosoftConfigRepository;
 import org.sakaiproject.microsoft.controller.auxiliar.ConfigRequest;
-import org.sakaiproject.util.ResourceLoader;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
@@ -33,8 +32,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 
-import lombok.extern.slf4j.Slf4j;
-
 
 /**
  * ConfigController
@@ -42,11 +39,10 @@ import lombok.extern.slf4j.Slf4j;
  * This is the controller used by Spring MVC to handle config related requests
  * 
  */
-@Slf4j
 @Controller
 public class ConfigController {
 	
-	private static ResourceLoader rb = new ResourceLoader("Messages");
+	// private static ResourceLoader rb = new ResourceLoader("Messages");
 	
 	@Autowired
 	private MicrosoftConfigurationService microsoftConfigurationService;

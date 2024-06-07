@@ -25,9 +25,9 @@ import com.microsoft.aad.msal4j.ConfidentialClientApplication;
 import com.microsoft.aad.msal4j.IAuthenticationResult;
 import com.microsoft.graph.authentication.IAuthenticationProvider;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 
-@Slf4j
+@Log4j2
 public class AdminAuthProvider implements IAuthenticationProvider {
 
 	private String authority;

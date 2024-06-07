@@ -39,7 +39,10 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LoggerContext;
 import org.sakaiproject.authz.api.FunctionManager;
+import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.messaging.api.MicrosoftMessage;
 import org.sakaiproject.messaging.api.MicrosoftMessage.MicrosoftMessageBuilder;
 import org.sakaiproject.messaging.api.MicrosoftMessagingService;
@@ -130,9 +133,9 @@ import com.microsoft.graph.requests.UserCollectionPage;
 import com.microsoft.graph.requests.UserCollectionRequestBuilder;
 import com.nimbusds.oauth2.sdk.util.StringUtils;
 import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 
-@Slf4j
+@Log4j2
 @Transactional
 public class MicrosoftCommonServiceImpl implements MicrosoftCommonService {
 
@@ -150,6 +153,7 @@ public class MicrosoftCommonServiceImpl implements MicrosoftCommonService {
 	private static final String LINK_SCOPE_USERS = "users";
 
 
+	@Setter private ServerConfigurationService serverConfigurationService;
 	@Setter private CacheManager cacheManager;
 	@Setter private FunctionManager functionManager;
 	@Setter private MicrosoftAuthorizationService microsoftAuthorizationService;
@@ -163,6 +167,10 @@ public class MicrosoftCommonServiceImpl implements MicrosoftCommonService {
 	final private Object lock = new Object();
 
 	public void init() {
+        LoggerContext context = (LoggerContext) LogManager.getContext(false);
+		context.setConfigLocation(new File(serverConfigurationService.getSakaiHomePath() + "custom-microsoft-log4j2.xml").toURI());
+		context.reconfigure();
+
 		// register functions
 		functionManager.registerFunction(PERM_VIEW_ALL_CHANNELS, true);
 		functionManager.registerFunction(PERM_CREATE_FILES, true);

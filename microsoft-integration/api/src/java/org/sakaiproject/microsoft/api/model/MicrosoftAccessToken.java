@@ -35,7 +35,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 
 @Entity
 @Table(name = "mc_access_token")
@@ -43,7 +43,7 @@ import lombok.extern.slf4j.Slf4j;
 @NoArgsConstructor
 @Data
 @Builder(toBuilder=true)
-@Slf4j
+@Log4j2
 public class MicrosoftAccessToken {
 	private static final String KEY_REFRESH_TOKEN = "RefreshToken";
 	private static final String KEY_SECRET = "secret";

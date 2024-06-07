@@ -24,9 +24,9 @@ import org.apache.commons.lang3.StringUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 
-@Slf4j
+@Log4j2
 @Converter(autoApply = true)
 public class JpaConverterMap implements AttributeConverter<Map, String> {
  

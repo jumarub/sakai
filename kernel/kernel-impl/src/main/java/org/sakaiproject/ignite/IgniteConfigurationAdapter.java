@@ -32,7 +32,6 @@ import org.apache.ignite.configuration.DeploymentMode;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.configuration.TransactionConfiguration;
 import org.apache.ignite.failure.FailureHandler;
-import org.apache.ignite.logger.slf4j.Slf4jLogger;
 import org.apache.ignite.plugin.segmentation.SegmentationPolicy;
 import org.apache.ignite.spi.checkpoint.cache.CacheCheckpointSpi;
 import org.apache.ignite.spi.collision.fifoqueue.FifoQueueCollisionSpi;
@@ -47,6 +46,7 @@ import org.springframework.beans.factory.config.AbstractFactoryBean;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.ignite.logger.log4j2.Log4J2Logger;
 
 @Slf4j
 public class IgniteConfigurationAdapter extends AbstractFactoryBean<IgniteConfiguration> {
@@ -117,7 +117,15 @@ public class IgniteConfigurationAdapter extends AbstractFactoryBean<IgniteConfig
             igniteConfiguration.setIgniteInstanceName(name);
             igniteConfiguration.setDeploymentMode(DeploymentMode.CONTINUOUS);
 
-            igniteConfiguration.setGridLogger(new Slf4jLogger());
+            try {
+                //            igniteConfiguration.setGridLogger(new Log4J2Logger(serverConfigurationService.getSakaiHomePath() + "custom-log4j2.properties"));//new Slf4jLogger());
+                            igniteConfiguration.setGridLogger(new Log4J2Logger(serverConfigurationService.getSakaiHomePath() + "custom-log4j2.xml"));
+                } catch (Exception e) {//IgniteCheckedException;
+                    e.printStackTrace();
+                }
+                System.out.println("--------------------------- " + igniteConfiguration.getGridLogger().fileName());
+
+
 
             // configuration for metrics update frequency
             igniteConfiguration.setMetricsUpdateFrequency(serverConfigurationService.getLong(IGNITE_METRICS_UPDATE_FREQ, IgniteConfiguration.DFLT_METRICS_UPDATE_FREQ));

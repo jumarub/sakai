@@ -23,9 +23,9 @@ import org.sakaiproject.microsoft.api.data.MicrosoftAuthorizationAccount;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 
-@Slf4j
+@Log4j2
 @Converter(autoApply = true)
 public class JpaConverterMicrosoftAuthorizationAccount implements AttributeConverter<MicrosoftAuthorizationAccount, String> {
 

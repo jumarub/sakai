@@ -252,9 +252,15 @@
             <groupId>org.apache.ignite</groupId>
             <artifactId>ignite-hibernate-ext</artifactId>
         </dependency>
-        <dependency>
+        <!-- <dependency>
             <groupId>org.apache.ignite</groupId>
             <artifactId>ignite-slf4j</artifactId>
+        </dependency> -->
+        <dependency>
+            <groupId>org.apache.ignite</groupId>
+            <artifactId>ignite-log4j2</artifactId>
+			<version>2.15.0</version>
+			<!-- TODO MOVER A MASTER Y DEPLOY -->
         </dependency>
         <dependency>
             <groupId>org.hibernate</groupId>

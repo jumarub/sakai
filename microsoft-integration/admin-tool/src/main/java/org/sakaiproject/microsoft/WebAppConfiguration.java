@@ -15,6 +15,7 @@
  */
 package org.sakaiproject.microsoft;
 
+import java.io.File;
 import java.util.EnumSet;
 
 import javax.servlet.DispatcherType;
@@ -22,6 +23,9 @@ import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRegistration.Dynamic;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.util.RequestFilter;
 import org.sakaiproject.util.SakaiContextLoaderListener;
 import org.sakaiproject.util.ToolListener;
@@ -29,7 +33,13 @@ import org.springframework.web.WebApplicationInitializer;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.servlet.DispatcherServlet;
 
+import lombok.Setter;
+import lombok.extern.log4j.Log4j2;
+
+@Log4j2
 public class WebAppConfiguration implements WebApplicationInitializer {
+
+	@Setter private ServerConfigurationService serverConfigurationService;
 
 	@Override
 	public void onStartup(ServletContext servletContext) throws ServletException {
