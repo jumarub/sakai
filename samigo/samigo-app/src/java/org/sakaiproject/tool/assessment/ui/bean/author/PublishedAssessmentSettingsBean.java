@@ -297,6 +297,8 @@ public class PublishedAssessmentSettingsBean extends SpringBeanAutowiringSupport
   private ServerConfigurationService serverConfigurationService;
   private boolean backgroundColorEnabled = serverConfigurationService.getBoolean(SAMIGO_SETTINGS_BACKGROUNDCOLOR_ENABLED, false);
 
+  @Setter private boolean gradebookGroupEnabled = false;
+
   public boolean isBackgroundColorEnabled() {
 	return backgroundColorEnabled;
   }
@@ -1993,7 +1995,7 @@ public void setFeedbackComponentOption(String feedbackComponentOption) {
 
     // This method builds the gradebook assignment selector in the assessment settings.
     private List<SelectItem> populateExistingGradebookItems() {
-
+      if (!this.gradebookGroupEnabled) {
         PublishedAssessmentService publishedAssessmentService = new PublishedAssessmentService();
         List<SelectItem> target = new ArrayList<>();
         try {
@@ -2065,6 +2067,16 @@ public void setFeedbackComponentOption(String feedbackComponentOption) {
         }
 
         return target;
+
+      } else {
+        return new ArrayList<SelectItem>();
+      }
+    }
+
+    public boolean getGradebookGroupEnabled() {
+      //TODO Cache aqui o dentro del gb?
+      this.gradebookGroupEnabled = gradingService.isGradebookGroupEnabled(AgentFacade.getCurrentSiteId());
+      return this.gradebookGroupEnabled;
     }
 
 }

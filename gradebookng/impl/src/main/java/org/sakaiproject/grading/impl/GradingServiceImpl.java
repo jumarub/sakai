@@ -101,6 +101,8 @@ import org.sakaiproject.grading.api.model.LetterGradeMapping;
 import org.sakaiproject.grading.api.model.LetterGradePercentMapping;
 import org.sakaiproject.grading.api.model.LetterGradePlusMinusMapping;
 import org.sakaiproject.grading.api.model.PassNotPassMapping;
+import org.sakaiproject.memory.api.Cache;
+import org.sakaiproject.memory.api.MemoryService;
 import org.sakaiproject.section.api.SectionAwareness;
 import org.sakaiproject.section.api.coursemanagement.CourseSection;
 import org.sakaiproject.section.api.coursemanagement.EnrollmentRecord;
@@ -114,7 +116,7 @@ import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.plus.api.PlusService;
 import org.sakaiproject.grading.api.GradingAuthz;
 import org.sakaiproject.util.ResourceLoader;
-
+import org.sakaiproject.util.StringUtil;
 import org.springframework.lang.Nullable;
 import org.springframework.orm.hibernate5.HibernateOptimisticLockingFailureException;
 
@@ -132,6 +134,12 @@ import lombok.extern.slf4j.Slf4j;
 @Getter
 @Setter
 public class GradingServiceImpl implements GradingService {
+
+    // POSSIBLE FEATURE SWITCH TO CONSTANT ON A SEPARATE FILE
+    private String gradebookGroupEnabledCache = "org.sakaiproject.tool.gradebook.group.enabled";
+    private String gradebookGroupInstancesCache = "org.sakaiproject.tool.gradebook.group.instances";
+
+    private MemoryService memoryService;
 
     public static final String UID_OF_DEFAULT_GRADING_SCALE_PROPERTY = "uidOfDefaultGradingScale";
 
@@ -154,8 +162,20 @@ public class GradingServiceImpl implements GradingService {
     @Autowired private SessionManager sessionManager;
     @Autowired private ServerConfigurationService serverConfigurationService;
 
+    
+
     // Local cache of static-between-deployment properties.
     private Map<String, String> propertiesMap = new HashMap<>();
+
+    public void init() {
+        log.debug("INIT");
+
+        log.debug(buildCacheLogDebug("creatingCache", gradebookGroupEnabledCache));
+        log.debug(buildCacheLogDebug("creatingCache", gradebookGroupInstancesCache));
+
+        memoryService.newCache(gradebookGroupEnabledCache);
+        memoryService.newCache(gradebookGroupInstancesCache);
+    }
 
     @Override
     public boolean isAssignmentDefined(String gradebookUid, String siteId, String assignmentName) {
@@ -3739,12 +3759,6 @@ public class GradingServiceImpl implements GradingService {
         }
     }
 
-    public void init() {
-        log.debug("INIT");
-		
-		//INIT GROUPS CACHE
-    }
-
     public void destroy() {
         log.debug("DESTROY");
         if (this.externalProviders != null) {
@@ -5139,13 +5153,25 @@ public class GradingServiceImpl implements GradingService {
 
 	@Override
 	public boolean isGradebookGroupEnabled(String siteId) {
-		///if cached return cache
-		
+        Cache<String, Boolean> gradebookGroupEnabled = memoryService.getCache(gradebookGroupEnabledCache);
+
+        if (gradebookGroupEnabled != null && gradebookGroupEnabled.containsKey(siteId)) {
+            log.debug(buildCacheLogDebug("cacheKeyFound", gradebookGroupEnabledCache));
+            Boolean groupEnabledCacheValue = gradebookGroupEnabled.get(siteId);
+
+            if (groupEnabledCacheValue != null) {
+                log.debug(buildCacheLogDebug("cacheValueFound", gradebookGroupEnabledCache));
+                return (boolean) groupEnabledCacheValue;
+            }
+        }
+
 		try {
 			final Site site = this.siteService.getSite(siteId);
 			boolean enabled = Boolean.parseBoolean(site.getProperties().getProperty(GB_GROUP_SITE_PROPERTY));
-//TODO DEBUG
-			log.info("isGradebookGroupEnabled for site {} : {}", siteId, enabled);
+
+            log.debug(buildCacheLogDebug("noCacheValueFound", gradebookGroupEnabledCache));
+            log.debug(buildCacheLogDebug("saveNewCacheValue", gradebookGroupEnabledCache));
+            gradebookGroupEnabled.put(siteId, enabled);
 			return enabled;
         } catch (IdUnusedException idue) {
             log.warn("No site for id {}", siteId);
@@ -5154,37 +5180,69 @@ public class GradingServiceImpl implements GradingService {
 	}
 
 	@Override
-	public List<String> getGradebookGroupInstances(String siteId) {
-		///if cached return cache
-		List<String> gbGroups = new ArrayList<>();
+	public List<Gradebook> getGradebookGroupInstances(String siteId) {
+        Cache<String, List<Gradebook>> gradebookGroupInstances = memoryService.getCache(gradebookGroupInstancesCache);
+
+        if (gradebookGroupInstances != null && gradebookGroupInstances.containsKey(siteId)) {
+            log.debug(buildCacheLogDebug("cacheKeyFound", gradebookGroupInstancesCache));
+            List<Gradebook> gradebookGroupInstanceList = gradebookGroupInstances.get(siteId);
+
+            if (gradebookGroupInstanceList != null) {
+                log.debug(buildCacheLogDebug("cacheValueFound", gradebookGroupInstancesCache));
+
+                return gradebookGroupInstanceList;
+            }
+        }
+
+        List<Gradebook> gbList = new ArrayList<>();
+
 		try {
 			final Site site = this.siteService.getSite(siteId);
 			Collection<ToolConfiguration> gbs = site.getTools("sakai.gradebookng");
 			for (ToolConfiguration tc : gbs) {
 				Properties props = tc.getPlacementConfig();
 				if (props.getProperty(GB_GROUP_TOOL_PROPERTY) != null) {
-//TODO DEBUG
 					log.info("Detected gradebook for group {}", props.getProperty(GB_GROUP_TOOL_PROPERTY));
-					gbGroups.add(props.getProperty(GB_GROUP_TOOL_PROPERTY));
+                    // HOLA
+                    Optional<Gradebook> gb = gradingPersistenceManager.getGradebook(props.getProperty(GB_GROUP_TOOL_PROPERTY));
+                    if (gb.isPresent()) {
+                        gbList.add(gb.get());
+                    }
 				}
 			}
         } catch (IdUnusedException idue) {
             log.warn("No site for id {}", siteId);
         }
-		return gbGroups;
+
+        log.debug(buildCacheLogDebug("noCacheValueFound", gradebookGroupInstancesCache));
+        log.debug(buildCacheLogDebug("saveNewCacheValue", gradebookGroupInstancesCache));
+        gradebookGroupInstances.put(siteId, gbList);
+		return gbList;
 	}
 
-/*    public List<GradebookDto> getGradebookGroupItemsForSite(String siteId) {
-			// ver si segun desde donde se llame es redundante este primer paso
-		List<String> gradebooks = getGradebookGroupInstances(siteId);
-		List<GradebookDto> gbDtos = new ArrayList<>();
-		for (String gb : gradebooks) {
-			List<Assignment> assignments = getAssignments(gb, siteId, SortType.SORT_BY_NONE);
-			GradebookDto gbDto = new GradebookDto();
-			ItemDto itemDto = new ItemDto();
-			for ()
-	}
-*/
+    // Possible new param to do log, warn or info instead of retriving message
+    // I18n feature implementation replacing strings to messageProperties
+    private String buildCacheLogDebug(String type, String cacheKey) {
+        if (type != null && !StringUtils.isBlank(type) && cacheKey != null && !StringUtils.isBlank(cacheKey)) {
+            switch (type) {
+                case "creatingCache":
+                    return "Creating cache with key '" + cacheKey + "'";
+                case "cacheKeyFound":
+                    return "Found cache key for '" + cacheKey + "'";
+                case "cacheValueFound":
+                    return "Found cache value for '" + cacheKey + "'";
+                case "noCacheValueFound":
+                    return "No cache value founded for '" + cacheKey + "'";
+                case "saveNewCacheValue":
+                    return "Saving new value for cache key '" + cacheKey + "'";
+                default:
+                    return "ERROR BUILDING CACHE LOG DEBUG ON GRADING SERVICE IMPL (INVALID TYPE)";
+            }
+        } else {
+            return "ERROR BUILDING CACHE LOG DEBUG ON GRADING SERVICE IMPL (EMPTY PARAMETERS OR NULL)";
+        }
+    }
+
     private void createDefaultLetterGradeMapping(final Map gradeMap) {
 
         if (getDefaultLetterGradePercentMapping().isEmpty()) {

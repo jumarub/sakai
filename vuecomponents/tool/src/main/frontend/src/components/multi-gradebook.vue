@@ -167,7 +167,10 @@ export default {
 		}
 	},
 	async mounted() {
-    	await fetch('/api/sites/' + this.siteId + '/items')
+		var endpoint = this.isCategory ? "/categories" : "/items";
+		console.log("ENDPOINT: " + endpoint);
+
+    	await fetch('/api/sites/' + this.siteId + endpoint)
       	.then((r) => {
 			if (r.ok) {
 				return r.json();
@@ -175,19 +178,25 @@ export default {
         	throw new Error(`Failed to get items for site ` + this.siteId);
       	})
       	.then((data) => {
-			this.options = data;
+			this.options = data.map(parent => {
+				parent.items = parent.items.map(item => {
+					// we add the group name to differentiate the items plus to avoid clashes in the multiselect
+					item.name = `${parent.name} - ${item.name}`;
+					return item;
+				});
+				return parent;
+        	});
       	})
       	.catch ((error) => console.error(error));
 
 		this.selectedTemp.split(',').forEach((element) => {
-			this.options.map((option) => {
-				const foundTag = option.items.find((item) => item.id === element );
-
+			for (const option of this.options) {
+				const foundTag = option.items.find((item) => item.id === element);
 				if (foundTag) {
 					this.value.push(foundTag);
 					break;
 				}
-			});
+			}
       	});
 	},
 };

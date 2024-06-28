@@ -95,6 +95,7 @@ import org.sakaiproject.authz.api.PermissionsHelper;
 import org.sakaiproject.authz.api.Role;
 import org.sakaiproject.authz.api.RoleAlreadyDefinedException;
 import org.sakaiproject.authz.api.SecurityAdvisor;
+import org.sakaiproject.authz.api.SecurityAdvisor.SecurityAdvice;
 import org.sakaiproject.authz.api.SecurityService;
 import org.sakaiproject.cheftool.Context;
 import org.sakaiproject.cheftool.JetspeedRunData;
@@ -903,12 +904,15 @@ public class SiteAction extends PagedResourceActionII {
 
 		showOrphanedMembers = serverConfigurationService.getString("site.setup.showOrphanedMembers", "admins");
 		m_userSiteCache = memoryService.newCache("org.sakaiproject.site.api.siteService.userSiteCache");
+		memoryService.destroyCache("org.sakaiproject.tool.gradebook.group.enabled");
+		memoryService.destroyCache("org.sakaiproject.tool.gradebook.group.instances");
 
 		defaultPublishType = serverConfigurationService.getString("site.setup.publish.default", SITE_PUBLISH_TYPE_MANUAL);
 		if (!StringUtils.equalsAny(defaultPublishType, SITE_PUBLISH_TYPE_AUTO, SITE_PUBLISH_TYPE_SCHEDULED, SITE_PUBLISH_TYPE_MANUAL)) {
 			log.warn("Default publish type is not valid [{}], setting to manual", defaultPublishType);
 			defaultPublishType = SITE_PUBLISH_TYPE_MANUAL;
 		}
+
 	}
 
 	private static final long ONE_DAY_IN_MS = 1000L * 60L * 60L * 24L;

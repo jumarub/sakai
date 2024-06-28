@@ -29,6 +29,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.time.Instant;
 
 import javax.faces.application.FacesMessage;
@@ -46,6 +47,7 @@ import org.apache.commons.text.StringEscapeUtils;
 import org.sakaiproject.component.cover.ComponentManager;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.event.api.EventTrackingService;
+import org.sakaiproject.grading.api.model.Gradebook;
 import org.sakaiproject.samigo.api.SamigoAvailableNotificationService;
 import org.sakaiproject.samigo.api.SamigoReferenceReckoner;
 import org.sakaiproject.samigo.util.SamigoConstants;
@@ -971,13 +973,15 @@ implements ActionListener
                     return false;
                 }
             } else {
-
                 try {
                     log.debug("before gbsHelper.addToGradebook()");
-                    List<String> existingGradebookUids = gradingService.getGradebookGroupInstances(AgentFacade.getCurrentSiteId());
+					List<Gradebook> gbList = gradingService.getGradebookGroupInstances(AgentFacade.getCurrentSiteId());
+                    List<String> existingGradebookUids = gbList.stream().map(Gradebook::getUid).collect(Collectors.toList());
+
                     List<String> selectedGradebookUids = new ArrayList<>();
                     List<String> selectedGroups = Arrays.asList(assessmentSettings.getGroupsAuthorized());
-// TODO S2U-26 VALIDAR GRUPOS ASIGNADOS AQUI? mirar el catch de arriba -> context.addMessage + setToGradebook..
+
+					// TODO S2U-26 VALIDAR GRUPOS ASIGNADOS AQUI? mirar el catch de arriba -> context.addMessage + setToGradebook..
                     if (!existingGradebookUids.containsAll(selectedGroups)) {
                         // TODO S2U-26 rb.getFormattedMessage("theisno"));
                         context.addMessage(null, new FacesMessage("HAS SELECCIONADO GRUPOS SIN GRADEBOOK !!!"));
@@ -996,7 +1000,7 @@ implements ActionListener
                         String ref = SamigoReferenceReckoner.reckoner().site(site.getId()).subtype("p").id(assessment.getPublishedAssessmentId().toString()).reckon().getReference();
                         data.setReference(ref);
                         for (String gUid : selectedGradebookUids) {
-System.out.println("gUid " + gUid);
+							System.out.println("gUid " + gUid);
                             gbsHelper.addToGradebook(gUid, data, newCategory, gradingService);
                         }
                     }

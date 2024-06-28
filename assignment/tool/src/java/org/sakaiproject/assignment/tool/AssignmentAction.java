@@ -215,6 +215,7 @@ import org.sakaiproject.grading.api.AssessmentNotFoundException;
 import org.sakaiproject.grading.api.CategoryDefinition;
 import org.sakaiproject.grading.api.GradingService;
 import org.sakaiproject.grading.api.SortType;
+import org.sakaiproject.grading.api.model.Gradebook;
 import org.sakaiproject.javax.PagingPosition;
 import org.sakaiproject.message.api.MessageHeader;
 import org.sakaiproject.rubrics.api.beans.AssociationTransferBean;
@@ -3684,22 +3685,23 @@ public class AssignmentAction extends PagedResourceActionII {
 		context.put("isGradebookGroupEnabled", isGradebookGroupEnabled);
 
         // get all assignments in Gradebook
-List<String> gradebooks = gradingService.getGradebookGroupInstances(contextString);
-//List<GradebookDto> gbWithItems = new ArrayList<>();
-// TODO S2U-26 parte de esto igual se hace directamente desde webapi + fetch y aqui se puede dejar segun variable isGbGroup
-// si se hace con el fetch + webapi al context tenemos que pasar
-	// siteid 
-	// tool NO - dentro del selector, no es variable donde se llama
-	// booleano assignmentsOcategoria NO - dentro del selector, no es variable donde se llama
-	// recibir del estado la selección anterior parecido a tags ?
-	// ..
+        List<Gradebook> gbList = gradingService.getGradebookGroupInstances(contextString);
+        List<String> gbUidList = gbList.stream().map(Gradebook::getUid).collect(Collectors.toList());
+        //List<GradebookDto> gbWithItems = new ArrayList<>();
+        // TODO S2U-26 parte de esto igual se hace directamente desde webapi + fetch y aqui se puede dejar segun variable isGbGroup
+        // si se hace con el fetch + webapi al context tenemos que pasar
+            // siteid
+            // tool NO - dentro del selector, no es variable donde se llama
+            // booleano assignmentsOcategoria NO - dentro del selector, no es variable donde se llama
+            // recibir del estado la selección anterior parecido a tags ?
+            // ..
 
-for (String gradebookUid : gradebooks) {
-        List<org.sakaiproject.grading.api.Assignment> gradebookAssignments = gradingService.getAssignments(gradebookUid, contextString, SortType.SORT_BY_NONE);
+        for (String gradebookUid : gbUidList) {
+            List<org.sakaiproject.grading.api.Assignment> gradebookAssignments = gradingService.getAssignments(gradebookUid, contextString, SortType.SORT_BY_NONE);
 
-//List<ItemDto> gbItems = new ArrayList<>();
-//TODA ESTA LOGICA DEBERIA MANTENERSE de alguna forma-- 
-	// en webapi switch por herramienta? ver lo comun vs lo distinto y luego lo que queremos mantener para nuestro caso
+        //List<ItemDto> gbItems = new ArrayList<>();
+        //TODA ESTA LOGICA DEBERIA MANTENERSE de alguna forma--
+        // en webapi switch por herramienta? ver lo comun vs lo distinto y luego lo que queremos mantener para nuestro caso
         // filtering out those from Samigo
         for (org.sakaiproject.grading.api.Assignment gAssignment : gradebookAssignments) {
             //org.sakaiproject.grading.api.Assignment gAssignment = (org.sakaiproject.grading.api.Assignment) i.next();
@@ -8796,17 +8798,18 @@ System.out.println("paramsss gb " + params.getString(GB_SELECTOR));
                 addtoGradebook = GRADEBOOK_INTEGRATION_NO;
             }
 
-System.out.println("addtoGradebook " + addtoGradebook);
+            System.out.println("addtoGradebook " + addtoGradebook);
             List<String> selectedGradebookUids = new ArrayList<>();
-//TODO S2U-26 COMUNIDAD IGUAL PONE PEGAS POR USAR LISTA PARA EL CASO GB-SITE PERO LA ALTERNATIVA SON MUCHOS IFS...
-							//String gradebookUid = siteId;
+            //TODO S2U-26 COMUNIDAD IGUAL PONE PEGAS POR USAR LISTA PARA EL CASO GB-SITE PERO LA ALTERNATIVA SON MUCHOS IFS...
+			//String gradebookUid = siteId;
             if (!GRADEBOOK_INTEGRATION_NO.equals(addtoGradebook)) {
-System.out.println("111 ");
+                System.out.println("111 ");
                 if (!gradingService.isGradebookGroupEnabled(siteId)) {
-System.out.println("no enabled metod site ");
+                System.out.println("no enabled metod site ");
                     selectedGradebookUids.add(siteId);
                 } else {
-                    List<String> existingGradebookUids = gradingService.getGradebookGroupInstances(siteId);
+                    List<Gradebook> gbList = gradingService.getGradebookGroupInstances(siteId);
+                    List<String> existingGradebookUids = gbList.stream().map(Gradebook::getUid).collect(Collectors.toList());
                     List<String> selectedGroups = rangeAndGroupSettings.groups.stream().map(Group::getId).collect(Collectors.toList());
                     if (!existingGradebookUids.containsAll(selectedGroups)) {
 						// TODO S2U-26 rb.getFormattedMessage("theisno"));

@@ -47,7 +47,7 @@
       <script>
         // Initialize input sync
         window.addEventListener("load", () => {
-          window.syncGbSelectorInput("gb-selector", "assessmentSettingsAction\\:gb_selector");
+          window.syncGbSelectorInput("gb-selector", "assessmentSettingsAction:gb_selector");
         });
       </script>
       </f:verbatim>
@@ -729,10 +729,6 @@
       <div class="col-md-10">
         <h:selectOneRadio id="toDefaultGradebook" value="#{publishedSettings.toDefaultGradebook}"  layout="pageDirection"
           onclick="enableDisableToGradebook();toggleCategories(this);">
-
-          <sakai-multi-gradebook id="gb-selector"></sakai-multi-gradebook>
-          <h:inputHidden id="gb_selector" />
-
           <f:selectItem itemValue="2" itemLabel="#{assessmentSettingsMessages.to_no_gradebook}"/>
           <f:selectItem itemValue="1" itemLabel="#{assessmentSettingsMessages.to_default_gradebook}"/>
           <f:selectItem itemValue="3" itemLabel="#{assessmentSettingsMessages.to_selected_gradebook}" itemDisabled="#{empty publishedSettings.existingGradebook}"/>
@@ -745,9 +741,19 @@
         </h:selectOneMenu>
       </h:panelGroup>
       <div class="col-md-10">
-        <h:selectOneMenu id="toGradebookName" value="#{publishedSettings.gradebookName}" rendered="#{publishedSettings.firstTargetSelected != 'Anonymous Users'}">
-          <f:selectItems value="#{publishedSettings.existingGradebook}" />
-        </h:selectOneMenu>
+        <h:panelGroup rendered="#{!assessmentSettings.gradebookGroupEnabled}">
+          <h:selectOneMenu id="toGradebookName" value="#{publishedSettings.gradebookName}" rendered="#{publishedSettings.firstTargetSelected != 'Anonymous Users'}">
+            <f:selectItems value="#{publishedSettings.existingGradebook}" />
+          </h:selectOneMenu>
+        </h:panelGroup>
+        <h:panelGroup rendered="#{assessmentSettings.gradebookGroupEnabled}">
+          <sakai-multi-gradebook
+            id="gb-selector"
+            site-id='<h:outputText value="#{publishedSettings.currentSiteId}" />'
+            selected-temp='<h:outputText value="#{publishedSettings.gradebookName}" />'></sakai-multi-gradebook>
+          <h:inputHidden id="gb_selector" value="#{publishedSettings.gradebookName}" />
+        </h:panelGroup>
+
       </div>
     </h:panelGroup>
 

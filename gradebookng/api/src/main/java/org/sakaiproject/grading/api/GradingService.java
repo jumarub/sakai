@@ -1040,5 +1040,5 @@ public interface GradingService extends EntityProducer {
     public String getUrlForAssignment(Assignment assignment);
 
     public boolean isGradebookGroupEnabled(String siteId);
-    public List<String> getGradebookGroupInstances(String siteId);
+    public List<Gradebook> getGradebookGroupInstances(String siteId);
 }

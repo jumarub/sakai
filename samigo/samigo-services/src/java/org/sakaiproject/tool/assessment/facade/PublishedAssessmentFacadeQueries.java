@@ -46,6 +46,7 @@ import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.exception.TypeException;
+import org.sakaiproject.grading.api.model.Gradebook;
 import org.sakaiproject.rubrics.api.RubricsConstants;
 import org.sakaiproject.rubrics.api.RubricsService;
 import org.sakaiproject.samigo.api.SamigoReferenceReckoner;
@@ -724,7 +725,6 @@ public class PublishedAssessmentFacadeQueries extends HibernateDaoSupport implem
 
 	public PublishedAssessmentFacade publishAssessment(
 			AssessmentFacade assessment) throws Exception {
-
 		PublishedAssessmentData publishedAssessment = preparePublishedAssessment(
 				(AssessmentData) assessment.getData());
 
@@ -775,17 +775,45 @@ public class PublishedAssessmentFacadeQueries extends HibernateDaoSupport implem
 						"org.sakaiproject.grading.api.GradingService");
 			}
 
+			// write authorization
+			createAuthorization(publishedAssessment);
+
 			GradebookServiceHelper gbsHelper = IntegrationContextFactory
 					.getInstance().getGradebookServiceHelper();
 
 			if (toGradebook != null && toGradebook.equals(EvaluationModelIfc.TO_DEFAULT_GRADEBOOK.toString())) {
 				try {
+					System.out.println("ENTRO TO_DEFAULT_GRADEBOOK");
                     Site site = siteService.getSite(toolManager.getCurrentPlacement().getContext());
                     String ref = SamigoReferenceReckoner.reckoner().site(site.getId()).subtype("p")
                                     .id(publishedAssessmentFacade.getPublishedAssessmentId().toString()).reckon().getReference();
                     publishedAssessment.setReference(ref);
-// TODO JUANMA publishAssessment - sustituir null for gradebook uids obtenidos de la property
-					gbsHelper.addToGradebook(null, publishedAssessment, publishedAssessment.getCategoryId(), g);
+
+					// TODO JUANMA publishAssessment - sustituir null for gradebook uids obtenidos de la property
+
+					List<Gradebook> gbList = g.getGradebookGroupInstances(AgentFacade.getCurrentSiteId());
+					List<String> existingGradebookUids = gbList.stream().map(Gradebook::getUid).collect(Collectors.toList());
+
+					List<String> selectedGradebookUids = new ArrayList<>();
+
+					Map groupsForSite = getGroupsForSite(AgentFacade.getCurrentSiteId());
+					Map<String, String> groupMap = getReleaseToGroups(groupsForSite, publishedAssessment.getPublishedAssessmentId());
+
+					System.out.println("groupsForSite: " + groupsForSite.size());
+
+					if (groupMap != null) {
+						System.out.println("groupMap SIZE: " + groupMap.size());
+						List<String> selectedGroups = groupMap.keySet().stream().collect(Collectors.toList());
+
+						if (existingGradebookUids.containsAll(selectedGroups)) {
+							selectedGradebookUids.addAll(selectedGroups);
+						}
+
+						for (String gUid : selectedGradebookUids) {
+							System.out.println("gUid: " + gUid);
+							gbsHelper.addToGradebook(gUid, publishedAssessment,  publishedAssessment.getCategoryId(), g);
+						}
+					}
 				} catch (Exception e) {
 					log.error("Removing published assessment: " + e);
 					delete(publishedAssessment);
@@ -794,8 +822,7 @@ public class PublishedAssessmentFacadeQueries extends HibernateDaoSupport implem
 			}
 		}
 
-		// write authorization
-		createAuthorization(publishedAssessment);
+
 		return publishedAssessmentFacade;
 	}
 

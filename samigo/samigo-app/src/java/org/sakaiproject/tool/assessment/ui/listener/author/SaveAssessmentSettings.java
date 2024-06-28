@@ -312,18 +312,12 @@ public class SaveAssessmentSettings
     Map <String, String> h = assessmentSettings.getValueMap();
     updateMetaWithValueMap(assessment, h);
 
-
     // TODO: https://github.com/sakaiproject/sakai/commit/e9635ea4ec2cf05c07662d7c8e7bd29a1946560d#diff-c3555f437c75f6d93d735ae9[…]e2faf2004ed0b2a13dd0f5e6417089
     if (EvaluationModelIfc.TO_SELECTED_GRADEBOOK.toString().equals(evaluation.getToGradeBook())) {
         assessment.updateAssessmentToGradebookNameMetaData(assessmentSettings.getGradebookName());
     } else {
         assessment.updateAssessmentToGradebookNameMetaData("");
     }
-
-    String gbTest = assessmentSettings.getGbTest();
-
-    System.out.println("VOY A ACTUALIZAR: " + gbTest);
-    assessment.updateAssessmentToGradebookNameMetaData(gbTest);
 
     ExtendedTimeFacade extendedTimeFacade = PersistenceService.getInstance().getExtendedTimeFacade();
     extendedTimeFacade.saveEntries(assessment, assessmentSettings.getExtendedTimes());
