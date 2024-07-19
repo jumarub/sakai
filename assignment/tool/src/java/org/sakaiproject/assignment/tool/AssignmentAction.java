@@ -3729,6 +3729,7 @@ public class AssignmentAction extends PagedResourceActionII {
                 // gradebook assignment label
                 String label = gAssignment.getName();
                 if (gAssignmentIdTitles.containsKey(gaId)) {
+                    System.out.println(" ( " + rb.getFormattedMessage("usedGradebookAssignment", new Object[]{gAssignmentIdTitles.get(gaId)}) + " )");
                     label += " ( " + rb.getFormattedMessage("usedGradebookAssignment", new Object[]{gAssignmentIdTitles.get(gaId)}) + " )";
                 }
                 gradebookAssignmentsLabel.put(formattedText.escapeHtml(gaId), label);

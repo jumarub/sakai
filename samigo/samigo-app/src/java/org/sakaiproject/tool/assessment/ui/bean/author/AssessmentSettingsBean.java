@@ -219,7 +219,10 @@ public class AssessmentSettingsBean extends SpringBeanAutowiringSupport implemen
   private boolean anonymousGrading;
   @Setter @Getter private String toDefaultGradebook;
   @Setter @Getter private String gradebookName;
+
   @Setter private List<SelectItem> existingGradebook = new ArrayList<>();
+  @Setter @Getter private boolean gradebookEnabled;
+
   private String scoringType;
   private String bgColor;
   private String bgImage;
@@ -305,7 +308,7 @@ public class AssessmentSettingsBean extends SpringBeanAutowiringSupport implemen
   private ServerConfigurationService serverConfigurationService;
   private boolean backgroundColorEnabled = serverConfigurationService.getBoolean(SAMIGO_SETTINGS_BACKGROUNDCOLOR_ENABLED, false);
   
-  private boolean gradebookGroupEnabled;
+  @Setter private boolean gradebookGroupEnabled = getGradebookGroupEnabled();
   
   public boolean isBackgroundColorEnabled() {
 	return backgroundColorEnabled;
@@ -496,7 +499,12 @@ public class AssessmentSettingsBean extends SpringBeanAutowiringSupport implemen
 
         this.currentSiteId = AgentFacade.getCurrentSiteId();
 
+        this.categoriesEnabled = populateCategoryEnabled();
         this.categoriesSelectList = populateCategoriesSelectList();
+
+        this.gradebookEnabled = populateGradebookEnabled();
+
+        // JUANMA
         this.categorySelected = initializeCategorySelected(assessment.getData().getCategoryId());
 
       }
@@ -545,17 +553,21 @@ public class AssessmentSettingsBean extends SpringBeanAutowiringSupport implemen
      * @return
      */
   private String initializeCategorySelected(Long categoryId) {
-    String catSelected = "-1";
-    if (categoryId != null) {
-        String catId;
-        for (SelectItem catIdAndName : categoriesSelectList) {
-            catId = catIdAndName.getValue().toString();
-            if (catId.equals(categoryId.toString())) {
-                catSelected = catId;
-            }
-        }
+    if (!this.gradebookGroupEnabled) {
+      String catSelected = "-1";
+      if (categoryId != null) {
+          String catId;
+          for (SelectItem catIdAndName : categoriesSelectList) {
+              catId = catIdAndName.getValue().toString();
+              if (catId.equals(categoryId.toString())) {
+                  catSelected = catId;
+              }
+          }
+      }
+      return catSelected;
+    } else {
+      return categoryId.toString();
     }
-    return catSelected;
   }
 
   public String getBgColorSelect() {
@@ -1910,16 +1922,16 @@ public class AssessmentSettingsBean extends SpringBeanAutowiringSupport implemen
         return categoriesEnabled;
     }
 
-    /**
-     * Populate the categoriesSelectList property with a list of string names
-     * of the categories in the gradebook
-     */
-    private List populateCategoriesSelectList() {
+  /**
+   * Populate the categoriesSelectList property with a list of string names
+   * of the categories in the gradebook
+   */
+  private List<SelectItem> populateCategoriesSelectList() {
+      if (!this.gradebookGroupEnabled) {
         List<CategoryDefinition> categoryDefinitions;
         List<SelectItem> selectList = new ArrayList<>();
 
         String gradebookUid = toolManager.getCurrentPlacement().getContext();
-        System.out.println("gradebookUid: " + gradebookUid);
         categoryDefinitions = gradingService.getCategoryDefinitions(gradebookUid, gradebookUid);
 
         selectList.add(new SelectItem("-1", assessmentSettingMessages.getString("gradebook_uncategorized"))); // -1 for a cat id means unassigned
@@ -1927,24 +1939,44 @@ public class AssessmentSettingsBean extends SpringBeanAutowiringSupport implemen
             selectList.add(new SelectItem(categoryDefinition.getId().toString(), categoryDefinition.getName()));
         }
 
-        List<Gradebook> gbList = gradingService.getGradebookGroupInstances(AgentFacade.getCurrentSiteId());
-
-        for (Gradebook gb : gbList){
-          GradebookInformation test = gradingService.getGradebookInformation(gb.getUid(), AgentFacade.getCurrentSiteId());
-          System.out.println("CATEGORIES ENABLED TEST: " + !Objects.equals(test.getCategoryType(), GradingConstants.CATEGORY_TYPE_NO_CATEGORY));
-        }
-
-        // Also set if categories are enabled based on category type
-        GradebookInformation gbInfo = gradingService.getGradebookInformation(gradebookUid, gradebookUid);
-        if (gbInfo != null) {
-          System.out.println("\nCATEGORIES ENABLED: " + !Objects.equals(gbInfo.getCategoryType(), GradingConstants.CATEGORY_TYPE_NO_CATEGORY));
-            this.categoriesEnabled = !Objects.equals(gbInfo.getCategoryType(), GradingConstants.CATEGORY_TYPE_NO_CATEGORY);
-        } else {
-            System.out.println("\nCATEGORIES ENABLED NO");
-            this.categoriesEnabled = false;
-        }
         return selectList;
+    } else {
+        return new ArrayList<>();
     }
+  }
+
+  private boolean populateCategoryEnabled() {
+    if (!this.gradebookGroupEnabled) {
+      String gradebookUid = toolManager.getCurrentPlacement().getContext();
+
+      GradebookInformation gbInfo = gradingService.getGradebookInformation(gradebookUid, gradebookUid);
+      if (gbInfo != null) {
+          return !Objects.equals(gbInfo.getCategoryType(), GradingConstants.CATEGORY_TYPE_NO_CATEGORY);
+      } else {
+          return false;
+      }
+    } else {
+      List<Gradebook> gbList = gradingService.getGradebookGroupInstances(AgentFacade.getCurrentSiteId());
+
+      for (Gradebook gb : gbList){
+        GradebookInformation test = gradingService.getGradebookInformation(gb.getUid(), AgentFacade.getCurrentSiteId());
+        if (!Objects.equals(test.getCategoryType(), GradingConstants.CATEGORY_TYPE_NO_CATEGORY)) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+  }
+
+  public boolean populateGradebookEnabled() {
+    if (!this.gradebookGroupEnabled) {
+      List gradebookItemList = getExistingGradebook();
+      return (gradebookItemList != null && !gradebookItemList.isEmpty()) ? true : false;
+    } else {
+      return true;
+    }
+  }
 
 	public void setExtendedTimes(List<ExtendedTime> extendedTimes) {
 		this.extendedTimes = extendedTimes;
@@ -2225,10 +2257,6 @@ public class AssessmentSettingsBean extends SpringBeanAutowiringSupport implemen
         //TODO Cache aqui o dentro del gb?
         this.gradebookGroupEnabled = gradingService.isGradebookGroupEnabled(AgentFacade.getCurrentSiteId());
         return this.gradebookGroupEnabled;
-    }
-
-    public void setGradebookGroupEnabled(boolean gradebookGroupEnabled) {
-      this.gradebookGroupEnabled = gradebookGroupEnabled;
     }
 
 }

@@ -294,14 +294,16 @@ public class SaveAssessmentSettings
 		}
 	}
 
+  System.out.println("SaveAssessmentSettings CATEGORIA SELECCIONADA: " + assessmentSettings.getCategorySelected());
+
     if (assessmentSettings.getScoringType()!=null)
       evaluation.setScoringType(new Integer(assessmentSettings.getScoringType()));
     assessment.setEvaluationModel(evaluation);
 
     // Add category unless unassigned (-1) is selected or defaulted. CategoryId comes
     // from the web page as a string representation of a the long cat id.
-    if (!StringUtils.equals(assessmentSettings.getCategorySelected(), "-1")) {
-		assessment.setCategoryId(Long.parseLong((assessmentSettings.getCategorySelected())));
+    if (!StringUtils.equals(assessmentSettings.getCategorySelected(), "-1") && !StringUtils.isEmpty(assessmentSettings.getCategorySelected())) {
+		  assessment.setCategoryId(Long.parseLong((assessmentSettings.getCategorySelected())));
     }
 
     // h. update ValueMap: it contains value for teh checkboxes in

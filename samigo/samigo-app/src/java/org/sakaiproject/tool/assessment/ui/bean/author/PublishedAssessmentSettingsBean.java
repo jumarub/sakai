@@ -58,6 +58,7 @@ import org.sakaiproject.grading.api.CategoryDefinition;
 import org.sakaiproject.grading.api.GradebookInformation;
 import org.sakaiproject.grading.api.GradingConstants;
 import org.sakaiproject.grading.api.SortType;
+import org.sakaiproject.grading.api.model.Gradebook;
 import org.sakaiproject.samigo.util.SamigoConstants;
 import org.sakaiproject.section.api.SectionAwareness;
 import org.sakaiproject.section.api.coursemanagement.EnrollmentRecord;
@@ -213,7 +214,11 @@ public class PublishedAssessmentSettingsBean extends SpringBeanAutowiringSupport
   private boolean anonymousGrading;
   @Getter @Setter private String toDefaultGradebook;
   @Getter @Setter private String gradebookName;
+  
   @Setter private List<SelectItem> existingGradebook = new ArrayList<>();
+  @Setter @Getter private boolean gradebookEnabled;
+
+
   private String scoringType;
   private String bgColor;
   private String bgImage;
@@ -297,7 +302,7 @@ public class PublishedAssessmentSettingsBean extends SpringBeanAutowiringSupport
   private ServerConfigurationService serverConfigurationService;
   private boolean backgroundColorEnabled = serverConfigurationService.getBoolean(SAMIGO_SETTINGS_BACKGROUNDCOLOR_ENABLED, false);
 
-  @Setter private boolean gradebookGroupEnabled = false;
+  @Setter private boolean gradebookGroupEnabled = getGradebookGroupEnabled();
 
   public boolean isBackgroundColorEnabled() {
 	return backgroundColorEnabled;
@@ -478,7 +483,11 @@ public class PublishedAssessmentSettingsBean extends SpringBeanAutowiringSupport
         
         this.currentSiteId = AgentFacade.getCurrentSiteId();
 
+        this.categoriesEnabled = populateCategoryEnabled();
         this.categoriesSelectList = populateCategoriesSelectList();
+
+        this.gradebookEnabled = populateGradebookEnabled();
+
         this.categorySelected = getCategoryForAssessmentName(assessment.getTitle());
 
       }
@@ -541,24 +550,55 @@ public class PublishedAssessmentSettingsBean extends SpringBeanAutowiringSupport
    * of the categories in the gradebook
    */
   private List<SelectItem> populateCategoriesSelectList() {
-    List<CategoryDefinition> categoryDefinitions;
-    List<SelectItem> selectList = new ArrayList<>();
+    if (!this.gradebookGroupEnabled) {
+      List<CategoryDefinition> categoryDefinitions;
+      List<SelectItem> selectList = new ArrayList<>();
 
-    String gradebookUid = toolManager.getCurrentPlacement().getContext();
-    categoryDefinitions = gradingService.getCategoryDefinitions(gradebookUid, gradebookUid);
+      String gradebookUid = toolManager.getCurrentPlacement().getContext();
+      categoryDefinitions = gradingService.getCategoryDefinitions(gradebookUid, gradebookUid);
 
-    selectList.add(new SelectItem("-1", assessmentSettingMessages.getString("gradebook_uncategorized"))); // -1 for a cat id means unassigned
-    for (CategoryDefinition categoryDefinition: categoryDefinitions) {
-      selectList.add(new SelectItem(categoryDefinition.getId().toString(), categoryDefinition.getName()));
-    }
-    // Also set if categories are enabled based on category type
-    GradebookInformation gbInfo = gradingService.getGradebookInformation(gradebookUid, gradebookUid);
-    if (gbInfo != null) {
-      this.categoriesEnabled = !Objects.equals(gbInfo.getCategoryType(), GradingConstants.CATEGORY_TYPE_NO_CATEGORY);
+      selectList.add(new SelectItem("-1", assessmentSettingMessages.getString("gradebook_uncategorized"))); // -1 for a cat id means unassigned
+      for (CategoryDefinition categoryDefinition: categoryDefinitions) {
+          selectList.add(new SelectItem(categoryDefinition.getId().toString(), categoryDefinition.getName()));
+      }
+
+      return selectList;
+  } else {
+      return new ArrayList<>();
+  }
+}
+
+  private boolean populateCategoryEnabled() {
+    if (!this.gradebookGroupEnabled) {
+      String gradebookUid = toolManager.getCurrentPlacement().getContext();
+
+      GradebookInformation gbInfo = gradingService.getGradebookInformation(gradebookUid, gradebookUid);
+      if (gbInfo != null) {
+          return !Objects.equals(gbInfo.getCategoryType(), GradingConstants.CATEGORY_TYPE_NO_CATEGORY);
+      } else {
+          return false;
+      }
     } else {
-      this.categoriesEnabled = false;
+      List<Gradebook> gbList = gradingService.getGradebookGroupInstances(AgentFacade.getCurrentSiteId());
+
+      for (Gradebook gb : gbList){
+        GradebookInformation test = gradingService.getGradebookInformation(gb.getUid(), AgentFacade.getCurrentSiteId());
+        if (!Objects.equals(test.getCategoryType(), GradingConstants.CATEGORY_TYPE_NO_CATEGORY)) {
+          return true;
+        }
+      }
+
+      return false;
     }
-    return selectList;
+  }
+
+  public boolean populateGradebookEnabled() {
+    if (!this.gradebookGroupEnabled) {
+      List gradebookItemList = getExistingGradebook();
+      return (gradebookItemList != null && !gradebookItemList.isEmpty()) ? true : false;
+    } else {
+      return true;
+    }
   }
 
   public void setCategoriesEnabled(boolean categoriesEnabled) {

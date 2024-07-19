@@ -192,6 +192,7 @@ implements ActionListener
 
 		assessment.setLastModifiedBy(AgentFacade.getAgentString());
 		assessment.setLastModifiedDate(new Date());
+		System.out.println("processAction assessment categoryId: " + assessment.getCategoryId());
 		assessmentService.saveAssessment(assessment); 
 		
 		// jj. save assessment first, then deal with ip
@@ -836,6 +837,7 @@ implements ActionListener
 
 		// Add category unless unassigned (-1) is selected or defaulted. CategoryId comes
 		// from the web page as a string representation of a the long cat id.
+		System.out.println("SavePublishedSettingsListener CATEGORY SELECTED: " + assessmentSettings.getCategorySelected());
 		if (!StringUtils.equals(assessmentSettings.getCategorySelected(), "-1")) {
 			assessment.setCategoryId(Long.parseLong((assessmentSettings.getCategorySelected())));
 		}
