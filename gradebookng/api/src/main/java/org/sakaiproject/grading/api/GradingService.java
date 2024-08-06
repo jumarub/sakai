@@ -32,12 +32,15 @@ import java.util.Optional;
 import java.util.Set;
 
 import org.sakaiproject.grading.api.model.Category;
+import org.sakaiproject.grading.api.model.CourseGrade;
 import org.sakaiproject.grading.api.model.Gradebook;
+import org.sakaiproject.grading.api.model.GradebookAssignment;
 import org.sakaiproject.grading.api.model.GradingEvent;
 import org.sakaiproject.grading.api.model.GradingScale;
 import org.sakaiproject.section.api.coursemanagement.CourseSection;
 
 import org.apache.commons.lang3.StringUtils;
+import org.hibernate.HibernateException;
 import org.sakaiproject.entity.api.EntityProducer;
 
 /**
@@ -132,6 +135,11 @@ public interface GradingService extends EntityProducer {
     @Deprecated
     public Assignment getAssignment(String gradebookUid, String siteId, String assignmentName)
             throws AssessmentNotFoundException;
+
+        List<String> getGradebookGroupInstancesIds(String siteId);
+        Assignment getAssignmentById(String siteId, Long assignmentId);
+        GradebookAssignment getGradebookAssigment(String siteId, Long assignmentId);
+        String getGradebookUidByAssignmentById(String siteId, Long assignmentId);
 
     public Assignment getExternalAssignment(String gradebookUid, String externalId);
     public List<String> getGradebookUidByExternalId(String externalId);
@@ -1041,4 +1049,6 @@ public interface GradingService extends EntityProducer {
 
     public boolean isGradebookGroupEnabled(String siteId);
     public List<Gradebook> getGradebookGroupInstances(String siteId);
+
+    public boolean checkMultiSelectorList(String siteId, List<String> groupList, List<String> multiSelectorList, boolean isCategory);
 }

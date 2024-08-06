@@ -21,6 +21,7 @@
 
 package org.sakaiproject.tool.assessment.integration.helper.ifc;
 import java.io.Serializable;
+import java.util.List;
 import java.util.Map;
 
 import org.sakaiproject.grading.api.GradingService;
@@ -45,6 +46,9 @@ public interface GradebookServiceHelper extends Serializable
 
   public boolean addToGradebook(String gradebookUId, PublishedAssessmentData publishedAssessment, Long categoryId,
 		  GradingService g) throws Exception;
+
+  public boolean buildItemToGradebook(PublishedAssessmentData publishedAssessment,
+    List<String> selectedGroups, Long categoryId, GradingService g) throws Exception;
 
   public boolean updateGradebook(PublishedAssessmentIfc publishedAssessment,
 		  GradingService g) throws Exception;

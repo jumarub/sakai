@@ -161,26 +161,12 @@ public class RestoreAssessmentsBean implements Serializable {
 
                 data.setReference(ref);
 
-                List<Gradebook> gbList = g.getGradebookGroupInstances(AgentFacade.getCurrentSiteId());
-                List<String> existingGradebookUids = gbList.stream().map(Gradebook::getUid).collect(Collectors.toList());
-
-                List<String> selectedGradebookUids = new ArrayList<>();
-                // JUANMA: EN OCASIONES EL PARAMETRO 'getReleaseToGroups' está vacío, pese a que antes de eliminar el examen publicado
-                // tenga asignado los grupos dentro de 'Envios y disponibilidad'. Al restaurar el examen se crea para todo el sitio
+                // TODO JUANMA restore - sustituir null for gradebook uids obtenidos de la property
                 Map<String, String> groupMap = assessment.getReleaseToGroups();
                 List<String> selectedGroups = groupMap.keySet().stream().collect(Collectors.toList());
 
-                if (existingGradebookUids.containsAll(selectedGroups)) {
-                    System.out.println("\n\n CONTIENE TODO, AÑADO AL ARRAY VACIO");
-                    selectedGradebookUids.addAll(selectedGroups);
-                }
+                gbsHelper.buildItemToGradebook(data, selectedGroups, null, g);
 
-                System.out.println("selectedGradebookUids size: " + selectedGradebookUids.size());
-
-                for (String gUid : selectedGradebookUids) {
-                    System.out.println("restoreAssessment gUid: " + gUid);
-                    gbsHelper.addToGradebook(gUid, data,  data.getCategoryId(), g);
-                }
             }
         } catch (Exception e1) {
             log.warn("RestoreAssessmentsBean - Exception thrown in updateGB():" + e1.getMessage());

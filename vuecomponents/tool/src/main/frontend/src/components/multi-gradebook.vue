@@ -1,7 +1,7 @@
 <template>
 	<div>
 <!-- TODO revisar labels segun items o categorias -->
-		<span>{{ i18n.groups }}</span>
+		<!-- <span>{{ i18n.groups }}</span> -->
 		<multiselect
 			:value="value"
 			:options="options"
@@ -133,6 +133,7 @@ export default {
 		selectedTemp: { type: String },
 		extraOptions: { type: String },
 		isCategory: { type: Boolean },
+		multipleSelection: { type: Boolean },
 	},
 	data(props) {
 		return {
@@ -169,6 +170,7 @@ export default {
 	async mounted() {
 		var endpoint = this.isCategory ? "/categories" : "/items";
 		console.log("ENDPOINT: " + endpoint);
+		console.log("selection" , this.multipleSelection);
 
     	await fetch('/api/sites/' + this.siteId + endpoint)
       	.then((r) => {
@@ -178,14 +180,19 @@ export default {
         	throw new Error(`Failed to get items for site ` + this.siteId);
       	})
       	.then((data) => {
-			this.options = data.map(parent => {
-				parent.items = parent.items.map(item => {
-					// we add the group name to differentiate the items plus to avoid clashes in the multiselect
-					item.name = `${parent.name} - ${item.name}`;
-					return item;
-				});
-				return parent;
-        	});
+			console.log(data);
+			if (data != null && data.length > 0) {
+				this.options = data.map(parent => {
+					parent.items = parent.items.map(item => {
+						// we add the group name to differentiate the items plus to avoid clashes in the multiselect
+						item.name = `${parent.name} - ${item.name}`;
+						return item;
+					});
+					return parent;
+        		});
+			} else {
+				this.options = [{ name: 'No options found', items: [] }];
+			}
       	})
       	.catch ((error) => console.error(error));
 
@@ -194,7 +201,9 @@ export default {
 				const foundTag = option.items.find((item) => item.id === element);
 				if (foundTag) {
 					this.value.push(foundTag);
-					break;
+					if (!this.multipleSelection) {
+						break;
+					}
 				}
 			}
       	});

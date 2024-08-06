@@ -49,9 +49,11 @@ import org.sakaiproject.entity.api.Reference;
 import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.grading.api.AssessmentNotFoundException;
 import org.sakaiproject.grading.api.AssignmentHasIllegalPointsException;
+import org.sakaiproject.grading.api.CategoryDefinition;
 import org.sakaiproject.grading.api.ConflictingAssignmentNameException;
 import org.sakaiproject.grading.api.GradingService;
 import org.sakaiproject.grading.api.InvalidGradeItemNameException;
+import org.sakaiproject.grading.api.model.GradebookAssignment;
 import org.sakaiproject.lti.api.LTIService;
 import org.sakaiproject.rubrics.api.RubricsConstants;
 import org.sakaiproject.rubrics.api.RubricsService;
@@ -395,9 +397,7 @@ public class AssignmentToolUtils {
             String op = gradeOption.equals("remove") ? "remove" : "update";
 
             List<String> gradebookUids = gradingService.getGradebookUidByExternalId(associateGradebookAssignment);
-System.out.println("gradeSubmission associateGradebookAssignment " + associateGradebookAssignment);
             for (String gradebookUid : gradebookUids) {
-System.out.println("gradeSubmission obtenido gradebookUid " + gradebookUid);
         // TODO S2U-26 validar si ese guid va con grupo o da igual? - aqui y en todas las llamadas al metodo
                 alerts.addAll(integrateGradebook(options, gradebookUid, aReference, associateGradebookAssignment, null, null, null, -1, null, sReference, op, -1));
             }
@@ -453,8 +453,6 @@ System.out.println("gradeSubmission obtenido gradebookUid " + gradebookUid);
             String updateRemoveSubmission, long category) {
 
         associateGradebookAssignment = StringUtils.trimToNull(associateGradebookAssignment);
-System.out.println("toolutils integrateGradebook associateGradebookAssignment " + associateGradebookAssignment);
-System.out.println("toolutils integrateGradebook updateRemoveSubmission " + updateRemoveSubmission);
         // add or remove external grades to gradebook
         // a. if Gradebook does not exists, do nothing, 'cos setting should have been hidden
         // b. if Gradebook exists, just call addExternal and removeExternal and swallow any exception. The
@@ -479,18 +477,15 @@ System.out.println("toolutils integrateGradebook updateRemoveSubmission " + upda
 				gradebookUid = siteId;
 			}
             if (gradingService.currentUserHasGradingPerm(gradebookUid)) {
-System.out.println("toolutils integrateGradebook if ");
                 boolean isExternalAssignmentDefined = gradingService.isExternalAssignmentDefined(gradebookUid, assignmentRef);
                 boolean isExternalAssociateAssignmentDefined = gradingService.isExternalAssignmentDefined(gradebookUid, associateGradebookAssignment);
-                boolean isAssignmentDefined = gradingService.isAssignmentDefined(gradebookUid, gradebookUid, associateGradebookAssignment);//TODO S2U-26 (revisar) por nombre - caso 1o gb y luego tareas o gb antiguo?
+                boolean isAssignmentDefined = gradingService.isAssignmentDefined(gradebookUid, siteId, associateGradebookAssignment);//TODO S2U-26 (revisar) por nombre - caso 1o gb y luego tareas o gb antiguo?
 
                 if (addUpdateRemoveAssignment != null) {
-System.out.println("toolutils integrateGradebook addUpdateRemoveAssignment no null ");
                     Assignment a = assignmentService.getAssignment(assignmentId);
                     // add an entry into Gradebook for newly created assignment or modified assignment, and there wasn't a correspond record in gradebook yet
                     if ((addUpdateRemoveAssignment.equals(GRADEBOOK_INTEGRATION_ADD) || addUpdateRemoveAssignment.equals("update"))
                             && associateGradebookAssignment == null) {
-System.out.println("no habia asociacion ");
                         // add assignment into gradebook
                         try {
                             // add assignment to gradebook
@@ -510,7 +505,6 @@ System.out.println("no habia asociacion ");
                             log.warn("integrateGradebook: {}", e.toString());
                         }
                     } else if ("update".equals(addUpdateRemoveAssignment)) {
-System.out.println("habia asociacion ");
                         if (isExternalAssociateAssignmentDefined) {
                             // if there is an external entry created in Gradebook based on this assignment, update it
                             try {
@@ -531,14 +525,12 @@ System.out.println("habia asociacion ");
                 Assignment a = assignmentService.getAssignment(assignmentId);
 
                 if (a != null) {
-System.out.println("a no null");
                     String propAddToGradebook = a.getProperties().get(NEW_ASSIGNMENT_ADD_TO_GRADEBOOK);
                     if ("update".equals(updateRemoveSubmission)
                             && (StringUtils.equals(propAddToGradebook, GRADEBOOK_INTEGRATION_ADD)
                             || StringUtils.equals(propAddToGradebook, GRADEBOOK_INTEGRATION_ASSOCIATE))
                             && a.getTypeOfGrade() == Assignment.GradeType.SCORE_GRADE_TYPE) {
 
-System.out.println("toolutils integrateGradebook updatesubm y asociado y tal  - caso actualizar submissions? ");
                         if (submissionRef == null) {
                             //Assignment scores map
                             Map<String, String> sm = new HashMap<>();
@@ -649,8 +641,7 @@ System.out.println("toolutils integrateGradebook updatesubm y asociado y tal  - 
                                 }
                             }
                         } else {
-							
-System.out.println("toolutils integrateGradebook caso3 ");
+
                             // remove only one submission grade
                             AssignmentSubmission aSubmission = assignmentService.getSubmission(submissionId);
                             if (aSubmission != null) {
@@ -843,6 +834,50 @@ System.out.println("toolutils integrateGradebook caso3 ");
             log.warn("Error trying to retrieve rubrics association for assignment : {}", e.getMessage());
         }
         return false;
+    }
+
+    public String fillSelectedGradebook(String siteId, Long assignmentId, String selectedGradebook) {
+        GradebookAssignment gradebookAssignment = gradingService.getGradebookAssigment(siteId, assignmentId);
+
+        if (gradebookAssignment != null) {
+            if (selectedGradebook.isBlank()) {
+                selectedGradebook += gradebookAssignment.getId().toString();
+            } else {
+                selectedGradebook += ("," + gradebookAssignment.getId().toString());
+            }
+        }
+
+        return selectedGradebook;
+    }
+
+    public void buildGradebookPointsMap(String gbUid, String siteId, String assignmentRef, Map<String, Double> gradebookPointsMap, String newCategoryString) {
+        Long catRef = -1L;
+
+        List<CategoryDefinition> categoryDefinitions = gradingService.getCategoryDefinitions(gbUid, siteId);
+        if (!newCategoryString.equals("-1") || assignmentRef.isEmpty()) {
+            // NO DEBERÍA EJECUTARSE
+            // TODO JUANMA CATEGORIA VACIA
+            // catRefList = newCategoryString;
+        } else {
+            for (CategoryDefinition categorie : categoryDefinitions) {
+                if (categorie.isAssignmentInThisCategory(assignmentRef)) {
+                    catRef = categorie.getId();
+                }
+            }
+        }
+
+        if (catRef != -1) {
+            for (CategoryDefinition thisCategoryDefinition : categoryDefinitions) {
+                if (Objects.equals(thisCategoryDefinition.getId(), catRef)) {
+                    if (thisCategoryDefinition.getDropKeepEnabled() && !thisCategoryDefinition.getEqualWeight()) {
+                        Double thisCategoryPoints = thisCategoryDefinition.getPointsForCategory();
+                        if (thisCategoryPoints != null) {
+                            gradebookPointsMap.put(gbUid, thisCategoryPoints);
+                        }
+                    }
+                }
+            }
+        }
     }
 
 }

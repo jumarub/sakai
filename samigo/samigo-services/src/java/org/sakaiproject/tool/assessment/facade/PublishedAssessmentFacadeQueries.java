@@ -789,31 +789,13 @@ public class PublishedAssessmentFacadeQueries extends HibernateDaoSupport implem
                                     .id(publishedAssessmentFacade.getPublishedAssessmentId().toString()).reckon().getReference();
                     publishedAssessment.setReference(ref);
 
-					// TODO JUANMA publishAssessment - sustituir null for gradebook uids obtenidos de la property
-
-					List<Gradebook> gbList = g.getGradebookGroupInstances(AgentFacade.getCurrentSiteId());
-					List<String> existingGradebookUids = gbList.stream().map(Gradebook::getUid).collect(Collectors.toList());
-
-					List<String> selectedGradebookUids = new ArrayList<>();
-
 					Map groupsForSite = getGroupsForSite(AgentFacade.getCurrentSiteId());
 					Map<String, String> groupMap = getReleaseToGroups(groupsForSite, publishedAssessment.getPublishedAssessmentId());
+					List<String> selectedGroups = groupMap.keySet().stream().collect(Collectors.toList());
 
-					System.out.println("groupsForSite: " + groupsForSite.size());
+					// TODO JUANMA publishAssessment - sustituir null for gradebook uids obtenidos de la property
+					gbsHelper.buildItemToGradebook(publishedAssessment, selectedGroups, null, g);
 
-					if (groupMap != null) {
-						System.out.println("groupMap SIZE: " + groupMap.size());
-						List<String> selectedGroups = groupMap.keySet().stream().collect(Collectors.toList());
-
-						if (existingGradebookUids.containsAll(selectedGroups)) {
-							selectedGradebookUids.addAll(selectedGroups);
-						}
-
-						for (String gUid : selectedGradebookUids) {
-							System.out.println("gUid: " + gUid);
-							gbsHelper.addToGradebook(gUid, publishedAssessment,  publishedAssessment.getCategoryId(), g);
-						}
-					}
 				} catch (Exception e) {
 					log.error("Removing published assessment: " + e);
 					delete(publishedAssessment);

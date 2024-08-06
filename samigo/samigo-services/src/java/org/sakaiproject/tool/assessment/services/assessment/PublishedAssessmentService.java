@@ -787,8 +787,14 @@ public class PublishedAssessmentService extends AssessmentService{
             } else {
                 log.warn("Gradebook item does not exist for assessment {}, creating a new gradebook item", assessment.getAssessmentId());
                 // TODO JUANMA ?? - sustituir null for gradebook uids obtenidos de la property
-                for (String gUid : selectedGradebookUids) {
-                  gbsHelper.addToGradebook(gUid, data,  data.getCategoryId(), gradingService);
+                boolean isGradebookGroupEnabled = gradingService.isGradebookGroupEnabled(AgentFacade.getCurrentSiteId());
+
+                if (isGradebookGroupEnabled) {
+                  for (String gUid : selectedGradebookUids) {
+                    gbsHelper.addToGradebook(gUid, data,  data.getCategoryId(), gradingService);
+                  }
+                } else {
+                  gbsHelper.addToGradebook(GradebookFacade.getGradebookUId(), data, data.getCategoryId(), gradingService);
                 }
             }
         }

@@ -18,10 +18,12 @@
 package org.sakaiproject.tool.assessment.integration.helper.integrated;
 
 import java.text.NumberFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.Locale;
 
 
@@ -36,6 +38,7 @@ import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.grading.api.AssessmentNotFoundException;
 import org.sakaiproject.grading.api.GradingService;
+import org.sakaiproject.grading.api.model.Gradebook;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SitePage;
 import org.sakaiproject.site.api.ToolConfiguration;
@@ -146,6 +149,35 @@ public class GradebookServiceHelperImpl implements GradebookServiceHelper
       added = true;
     }
     return added;
+  }
+
+  public boolean buildItemToGradebook(PublishedAssessmentData publishedAssessment,
+    List<String> selectedGroups, Long categoryId, GradingService g) throws Exception {
+
+    boolean isGradebookGroupEnabled = g.isGradebookGroupEnabled(AgentFacade.getCurrentSiteId());
+
+    if (isGradebookGroupEnabled) {
+      List<Gradebook> gbList = g.getGradebookGroupInstances(AgentFacade.getCurrentSiteId());
+      List<String> existingGradebookUids = gbList.stream().map(Gradebook::getUid).collect(Collectors.toList());
+
+      List<String> selectedGradebookUids = new ArrayList<>();
+
+      if (existingGradebookUids.containsAll(selectedGroups)) {
+        selectedGradebookUids.addAll(selectedGroups);
+      } else {
+        System.out.println();
+      }
+
+      for (String gUid : selectedGradebookUids) {
+        addToGradebook(gUid, publishedAssessment, (categoryId != null ? categoryId : publishedAssessment.getCategoryId()), g);
+      }
+
+      return true;
+    } else {
+      System.out.println("NO TENGO GRUPOS DE GRADEBOOK: " + GradebookFacade.getGradebookUId());
+      return addToGradebook(GradebookFacade.getGradebookUId(), publishedAssessment,
+        (categoryId != null ? categoryId : publishedAssessment.getCategoryId()), g);
+    }
   }
 
   /**

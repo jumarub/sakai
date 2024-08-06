@@ -194,7 +194,9 @@ public class GradesController extends AbstractSakaiApiController {
                 //TODO revisar - esta comprobacion ahora mismo viene de tareas, faltan otras y luego cada tool tendra
                 if (!gAssignment.getExternallyMaintained() || gAssignment.getExternallyMaintained() && gAssignment.getExternalAppName().equals(AssignmentServiceConstants.ASSIGNMENT_TOOL_ID)) {
                     // gradebook item has been associated or not
-                    String gaId = gAssignment.getExternallyMaintained() ? gAssignment.getExternalId() : gAssignment.getId().toString();
+                    // ANTIGUO MÉTODO Se cambia de Referencia / Ids a unicamente Ids, por lo que se recoge solo el id
+                    // String gaId = gAssignment.getExternallyMaintained() ? gAssignment.getExternalId() : gAssignment.getId().toString();
+                    String gaId = gAssignment.getId().toString();
                     log.info("gaId " + gaId);
                     // gradebook assignment label
                     String label = gAssignment.getName();
@@ -229,7 +231,7 @@ public class GradesController extends AbstractSakaiApiController {
 
             List<CategoryDefinition> categoryDefinitionList = gradingService.getCategoryDefinitions(gbUid, gbUid);
 
-            for (CategoryDefinition category : categoryDefinitionList){
+            for (CategoryDefinition category : categoryDefinitionList) {
                 Long categoryId = category.getId();
                 String categoryName = category.getName();
 

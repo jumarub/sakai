@@ -977,19 +977,6 @@ implements ActionListener
             } else {
                 try {
                     log.debug("before gbsHelper.addToGradebook()");
-					List<Gradebook> gbList = gradingService.getGradebookGroupInstances(AgentFacade.getCurrentSiteId());
-                    List<String> existingGradebookUids = gbList.stream().map(Gradebook::getUid).collect(Collectors.toList());
-
-                    List<String> selectedGradebookUids = new ArrayList<>();
-                    List<String> selectedGroups = Arrays.asList(assessmentSettings.getGroupsAuthorized());
-
-					// TODO S2U-26 VALIDAR GRUPOS ASIGNADOS AQUI? mirar el catch de arriba -> context.addMessage + setToGradebook..
-                    if (!existingGradebookUids.containsAll(selectedGroups)) {
-                        // TODO S2U-26 rb.getFormattedMessage("theisno"));
-                        context.addMessage(null, new FacesMessage("HAS SELECCIONADO GRUPOS SIN GRADEBOOK !!!"));
-                    } else {
-                        selectedGradebookUids.addAll(selectedGroups);
-                    }
 
                     Long newCategory = null;
                     if (!StringUtils.equals(assessmentSettings.getCategorySelected(), "-1")) {
@@ -1001,10 +988,8 @@ implements ActionListener
                         Site site = SiteService.getSite(ToolManager.getCurrentPlacement().getContext());
                         String ref = SamigoReferenceReckoner.reckoner().site(site.getId()).subtype("p").id(assessment.getPublishedAssessmentId().toString()).reckon().getReference();
                         data.setReference(ref);
-                        for (String gUid : selectedGradebookUids) {
-							System.out.println("gUid " + gUid);
-                            gbsHelper.addToGradebook(gUid, data, newCategory, gradingService);
-                        }
+
+						gbsHelper.buildItemToGradebook(data, Arrays.asList(assessmentSettings.getGroupsAuthorized()), newCategory, gradingService);
                     }
 
                     // any score to copy over? get all the assessmentGradingData and copy over

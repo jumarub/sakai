@@ -279,22 +279,24 @@ public class GradingServiceImpl implements GradingService {
             .orElseThrow(() -> new IllegalArgumentException("Invalid gradebookUid or externalId"));
     }
 
-//TODO CACHE
+    //TODO CACHE
 	//TODO hay algun caso en el q se pueda cambiar la respuesta?? si es asi resetear la cache en ese caso
     public List<String> getGradebookUidByExternalId(String externalId) {
-//TODO validar aqui o en tareas si el guid corresponde a alguno de los grupos seleccionados?
+        //TODO validar aqui o en tareas si el guid corresponde a alguno de los grupos seleccionados?
 
-		List<GradebookAssignment> optAsn = gradingPersistenceManager.getGradebookUidByExternalId(externalId);
-//?
+        List<GradebookAssignment> optAsn = gradingPersistenceManager.getGradebookUidByExternalId(externalId);
+        //?
         if (optAsn.isEmpty()) {
-            throw new AssessmentNotFoundException("There is no assessment id=" + externalId);
+            return new ArrayList<>();
+			//2407 sustituyo porque si lanzo excepcion peta por ejemplo al borrar una tarea que no tiene (o con el ref erroneo?) pero seguir viendo si la excep estaba por algo...
+			//throw new AssessmentNotFoundException("There is no assessment id=" + externalId);
         }
 
         return optAsn.stream()
 			.map(a -> a.getGradebook().getUid())//MyObject::getName)
 			.collect(Collectors.toList());//get().getGradebook().getUid();
     }
-	
+
     @Override
     public Assignment getAssignmentByNameOrId(String gradebookUid, String siteId, String assignmentName) throws AssessmentNotFoundException {
 
@@ -5110,14 +5112,80 @@ public class GradingServiceImpl implements GradingService {
         return gradingPersistenceManager.saveAssignment(asn).getId();
     }
 
+    @Override
+	public List<String> getGradebookGroupInstancesIds(String siteId) {
+       return getGradebookGroupInstances(siteId).stream()
+				.map(Gradebook::getUid)
+				.collect(Collectors.toList());
+	}
+
     /**
      *
      * @param id
      * @return the GradebookAssignment object with the given id
      */
-    public GradebookAssignment getAssignment(Long id) {
-        return gradingPersistenceManager.getAssignmentById(id).orElse(null);
+    @Override
+	public Assignment getAssignmentById(String siteId, Long assignmentId) {
+        if (assignmentId == null || siteId == null) {
+            throw new IllegalArgumentException("null parameter passed to getAssignment. Values are assignmentId:" + assignmentId + " siteId:" + siteId);
+        }
+        if (!isUserAbleToViewAssignments(siteId) && !currentUserHasViewOwnGradesPerm(siteId)) {
+            log.warn("AUTHORIZATION FAILURE: User {} in site {} attempted to get assignment with id {}", getUserUid(), siteId, assignmentId);
+            throw new GradingSecurityException();
+        }
+
+        GradebookAssignment assignment = gradingPersistenceManager.getAssignmentById(assignmentId).orElse(null);
+
+        if (assignment == null) {
+            throw new AssessmentNotFoundException("No gradebook item exists with gradable object id = " + assignmentId);
+        }
+
+        return getAssignmentDefinition(assignment, false);
     }
+
+        /**
+     *
+     * @param id
+     * @return the GradebookAssignment object with the given id
+     */
+    @Override
+	public GradebookAssignment getGradebookAssigment(String siteId, Long assignmentId) {
+        if (assignmentId == null || siteId == null) {
+            throw new IllegalArgumentException("null parameter passed to getAssignment. Values are assignmentId:" + assignmentId + " siteId:" + siteId);
+        }
+        if (!isUserAbleToViewAssignments(siteId) && !currentUserHasViewOwnGradesPerm(siteId)) {
+            log.warn("AUTHORIZATION FAILURE: User {} in site {} attempted to get assignment with id {}", getUserUid(), siteId, assignmentId);
+            throw new GradingSecurityException();
+        }
+
+        GradebookAssignment assignment = gradingPersistenceManager.getAssignmentById(assignmentId).orElse(null);
+
+        if (assignment == null) {
+            throw new AssessmentNotFoundException("No gradebook item exists with gradable object id = " + assignmentId);
+        }
+
+        return assignment;
+    }
+
+    @Override
+	public String getGradebookUidByAssignmentById(String siteId, Long assignmentId) {
+        /*if (assignmentId == null || siteId == null) {
+            throw new IllegalArgumentException("null parameter passed to getAssignment. Values are assignmentId:" + assignmentId + " siteId:" + siteId);
+        }
+        if (!isUserAbleToViewAssignments(siteId) && !currentUserHasViewOwnGradesPerm(siteId)) {
+            log.warn("AUTHORIZATION FAILURE: User {} in site {} attempted to get assignment with id {}", getUserUid(), siteId, assignmentId);
+            throw new GradingSecurityException();
+        }
+
+        GradebookAssignment assignment = gradingPersistenceManager.getAssignmentById(assignmentId).orElse(null);
+
+        if (assignment == null) {
+            throw new AssessmentNotFoundException("No gradebook item exists with gradable object id = " + assignmentId);
+        }
+
+        return assignment.getGradebook().getUid();*/
+		return getAssignmentById(siteId, assignmentId).getContext();//TODO revisar comentario en metodo getAssignmentDefinition
+	}
 
     @Override
     public String getUrlForAssignment(Assignment assignment) {//revisar y ver la forma de recuperar el GB desde un objeto de este tipo..
@@ -5571,5 +5639,50 @@ public class GradingServiceImpl implements GradingService {
                 }
             }
         }
+    }
+
+    @Override
+    public boolean checkMultiSelectorList(String siteId, List<String> groupList, List<String> multiSelectorList, boolean isCategory) {
+        if (isCategory) {
+            for (String categoryId : multiSelectorList) {
+                if (!categoryId.isEmpty() && !categoryId.isBlank()) {
+                    boolean isCategoryInGradebook = false;
+
+                    for (String groupId : groupList) {
+                        List<CategoryDefinition> categoryDefinitionList = getCategoryDefinitions(groupId, groupId);
+
+                        boolean foundCategory = categoryDefinitionList.stream()
+                            .anyMatch(category -> category.getId().equals(Long.parseLong(categoryId)));
+
+                        if (foundCategory) {
+                            isCategoryInGradebook = true;
+                            break;
+                        }
+                    }
+
+                    if (!isCategoryInGradebook) {
+                        return false;
+                    }
+                }
+            }
+        } else {
+            List<String> gbUidList = new ArrayList<>();
+
+            for (String gbItem : multiSelectorList) {
+                String gbUid = getGradebookUidByAssignmentById(siteId, Long.parseLong(gbItem));
+                gbUidList.add(gbUid);
+            }
+
+            Collections.sort(gbUidList);
+            Collections.sort(groupList);
+
+            boolean areEqual = gbUidList.equals(groupList);
+
+            if (!areEqual) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
