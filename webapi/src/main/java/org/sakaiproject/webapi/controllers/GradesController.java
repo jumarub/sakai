@@ -272,6 +272,9 @@ public class GradesController extends AbstractSakaiApiController {
         @RequestParam
         @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm") LocalDateTime timestamp
     ) {
+
+        checkSakaiSession();
+
         String query2 = "SELECT gr.STUDENT_ID, gr.POINTS_EARNED, gr.DATE_RECORDED, gbo.NAME, gbo.EXTERNAL_APP_NAME, gb.GRADEBOOK_UID FROM gb_grade_record_t gr JOIN gb_gradable_object_t gbo ON gr.GRADABLE_OBJECT_ID = gbo.ID JOIN gb_gradebook_t gb ON gbo.GRADEBOOK_ID = gb.ID WHERE gr.date_recorded > ?;";
 
         if (timestamp == null) {
