@@ -275,7 +275,7 @@ public class GradesController extends AbstractSakaiApiController {
 
         checkSakaiSession();
 
-        String query2 = "SELECT gr.STUDENT_ID, gr.POINTS_EARNED, gr.DATE_RECORDED, gbo.NAME, gbo.EXTERNAL_APP_NAME, gb.GRADEBOOK_UID FROM gb_grade_record_t gr JOIN gb_gradable_object_t gbo ON gr.GRADABLE_OBJECT_ID = gbo.ID JOIN gb_gradebook_t gb ON gbo.GRADEBOOK_ID = gb.ID WHERE gr.date_recorded > ?;";
+        String query2 = "SELECT gr.STUDENT_ID, gr.POINTS_EARNED, gr.DATE_RECORDED, gbo.NAME, gbo.EXTERNAL_APP_NAME, gb.GRADEBOOK_UID FROM GB_GRADE_RECORD_T gr JOIN GB_GRADABLE_OBJECT_T gbo ON gr.GRADABLE_OBJECT_ID = gbo.ID JOIN gb_gradebook_t gb ON gbo.GRADEBOOK_ID = gb.ID WHERE gr.date_recorded > ?;";
 
         if (timestamp == null) {
             timestamp = LocalDateTime.now().minus(1, ChronoUnit.WEEKS);
