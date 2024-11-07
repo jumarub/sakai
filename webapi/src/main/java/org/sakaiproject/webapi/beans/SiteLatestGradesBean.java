@@ -15,4 +15,5 @@ public class SiteLatestGradesBean {
 	@EqualsAndHashCode.Include
 	private String id;
 	private List<UserLatestGradeBean> userLatestGradeList;
+	private List<CourseGradeRestBean> courseGradeRestBean;
 }

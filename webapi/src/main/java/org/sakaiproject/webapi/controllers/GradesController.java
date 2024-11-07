@@ -13,15 +13,36 @@
  ******************************************************************************/
 package org.sakaiproject.webapi.controllers;
 
-import lombok.extern.slf4j.Slf4j;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
 
 import org.apache.commons.lang3.StringUtils;
 import org.sakaiproject.assignment.api.AssignmentService;
-import org.sakaiproject.assignment.api.model.Assignment;
 import org.sakaiproject.authz.api.Member;
 import org.sakaiproject.authz.api.Role;
+import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.EntityManager;
+import org.sakaiproject.grading.api.CourseGradeTransferBean;
 import org.sakaiproject.grading.api.GradeDefinition;
 import org.sakaiproject.grading.api.GradingConstants;
 import org.sakaiproject.portal.api.PortalService;
@@ -30,7 +51,7 @@ import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.site.api.ToolConfiguration;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.user.api.UserNotDefinedException;
-import org.sakaiproject.util.Xml;
+import org.sakaiproject.webapi.beans.CourseGradeRestBean;
 import org.sakaiproject.webapi.beans.GradeRestBean;
 import org.sakaiproject.webapi.beans.SimpleSiteRestBean;
 import org.sakaiproject.webapi.beans.SiteLatestGradesBean;
@@ -41,24 +62,10 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RestController;
-import org.sakaiproject.db.api.SqlService;
-
-import javax.annotation.Resource;
-
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.Timestamp;
-import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
-import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import lombok.extern.slf4j.Slf4j;
 
 
 /**
@@ -185,8 +192,13 @@ public class GradesController extends AbstractSakaiApiController {
         return gradeDataSupplierForSite.apply(siteId);
     }
 
+    /* Endpoint to retrieve all users grades within a site
+        courseGrades param is optional to additionally get the course grades all of users */
     @GetMapping(value = "/sites/{siteId}/users/grades", produces = MediaType.APPLICATION_JSON_VALUE)
-    public SimpleSiteRestBean getUsersGrades(@PathVariable String siteId) {
+    public SimpleSiteRestBean getUsersGrades(
+        @PathVariable String siteId,
+        @RequestParam(required = false, defaultValue = "false") boolean courseGrades
+    ) {
 
         checkSakaiSession();
 
@@ -259,6 +271,13 @@ public class GradesController extends AbstractSakaiApiController {
                 userGradeRestBeanList.add(userGradeRestBean);
             }
 
+            List<CourseGradeRestBean> courseGradeList = null;
+
+            if (courseGrades) {
+                courseGradeList = getStudentCourseGradeList(siteId, userSet);
+            }
+
+            simpleSiteRestBean.setCourseGrades(courseGradeList);
             simpleSiteRestBean.setUserGrades(userGradeRestBeanList);
 
             return simpleSiteRestBean;
@@ -267,10 +286,13 @@ public class GradesController extends AbstractSakaiApiController {
         }
     }
 
+    /* Endpoint to retrieve the latest grades from the date provided until today
+        - courseGrades param is optional to additionally get the course grades all of users
+        - timestamp if not provided will be set 1 week before today */
     @GetMapping(value = "/grades/latest", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<SiteLatestGradesBean> getLatestGrades(
-        @RequestParam
-        @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm") LocalDateTime timestamp
+        @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm") LocalDateTime timestamp,
+        @RequestParam(required = false, defaultValue = "false") boolean courseGrades
     ) {
 
         checkSakaiSession();
@@ -330,7 +352,14 @@ public class GradesController extends AbstractSakaiApiController {
 
                 userGrades.sort(Comparator.comparing(UserLatestGradeBean::getStudentId));
 
-                SiteLatestGradesBean siteLatestGradesBean = new SiteLatestGradesBean(siteId, userGrades);
+                List<CourseGradeRestBean> courseGradeList = null;
+
+                if (courseGrades) {
+                    Site site = siteService.getSite(siteId);
+                    courseGradeList = getStudentCourseGradeList(siteId, site.getUsers());
+                }
+
+                SiteLatestGradesBean siteLatestGradesBean = new SiteLatestGradesBean(siteId, userGrades, courseGradeList);
                 siteLatestGradesList.add(siteLatestGradesBean);
             }
             return siteLatestGradesList;
@@ -340,4 +369,44 @@ public class GradesController extends AbstractSakaiApiController {
         }
     }
 
+    // Endpoint to retrieve the course grades of all users within a site
+    @GetMapping(value = "/sites/{siteId}/course/grades", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Map<String, List<CourseGradeRestBean>> getStudentsCourseGrade(
+        @PathVariable String siteId
+    ) {
+        try {
+            Site site = siteService.getSite(siteId);
+            List<CourseGradeRestBean> courseGradeList = getStudentCourseGradeList(siteId, site.getUsers());
+
+            return new HashMap<>() {{ put(siteId, courseGradeList); }};
+
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
+    private List<CourseGradeRestBean> getStudentCourseGradeList(String siteId, Set<String> userSet) {
+        List<CourseGradeRestBean> courseGradeList = new ArrayList<>();
+        Map<String, CourseGradeTransferBean> studentsCourseGrade = gradingService.getCourseGradeForStudents(siteId, userSet.stream().collect(Collectors.toList()));
+
+        for (Map.Entry<String, CourseGradeTransferBean> entry : studentsCourseGrade.entrySet()) {
+            String userId = entry.getKey();
+            CourseGradeTransferBean courseGradeTransferBean = entry.getValue();
+
+            CourseGradeRestBean courseGradeRestBean = buildCourseGradeRestBean(userId, courseGradeTransferBean);
+
+            courseGradeList.add(courseGradeRestBean);
+        }
+
+        return courseGradeList;
+    }
+
+    private CourseGradeRestBean buildCourseGradeRestBean(String userId, CourseGradeTransferBean courseGradeTransferBean) {
+        if (userId != null && courseGradeTransferBean != null) {
+            return new CourseGradeRestBean(userId, courseGradeTransferBean);
+        } else {
+            return null;
+        }
+    }
 }

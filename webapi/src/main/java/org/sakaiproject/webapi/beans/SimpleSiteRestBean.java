@@ -15,6 +15,7 @@ public class SimpleSiteRestBean {
 	@EqualsAndHashCode.Include
 	private String id;
 	private String title;
+	private List<CourseGradeRestBean> courseGrades;
 	private List<UserRestBean> userGrades;
 
 	public SimpleSiteRestBean(Site site) {
