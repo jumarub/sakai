@@ -14,6 +14,8 @@ import lombok.NoArgsConstructor;
 public class SiteLatestGradesBean {
 	@EqualsAndHashCode.Include
 	private String id;
+	private String courseTitle;
+	private String courseStartDate;
+	private String courseEndDate;
 	private List<UserLatestGradeBean> userLatestGradeList;
-	private List<CourseGradeRestBean> courseGradeRestBean;
 }

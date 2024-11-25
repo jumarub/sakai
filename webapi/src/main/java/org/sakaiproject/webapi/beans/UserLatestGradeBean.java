@@ -2,15 +2,14 @@ package org.sakaiproject.webapi.beans;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import java.util.List;
 
 @Data
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class UserLatestGradeBean {
 
 	private String studentId;
-	private String score;
-	private String dateRecorded;
-	private String toolId;
-	private String gradableTitle;
+	private List<AssesmentGradeRestBean> assesmentGradeRestBeanList;
+	private CourseGradeRestBean courseGradeRestBean;
 	
 }

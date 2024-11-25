@@ -19,6 +19,7 @@ import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -58,6 +59,7 @@ import org.sakaiproject.webapi.beans.SiteLatestGradesBean;
 import org.sakaiproject.webapi.beans.UserGradesRestBean;
 import org.sakaiproject.webapi.beans.UserLatestGradeBean;
 import org.sakaiproject.webapi.beans.UserRestBean;
+import org.sakaiproject.webapi.beans.AssesmentGradeRestBean;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -297,7 +299,7 @@ public class GradesController extends AbstractSakaiApiController {
 
         checkSakaiSession();
 
-        String query2 = "SELECT gr.STUDENT_ID, gr.POINTS_EARNED, gr.DATE_RECORDED, gbo.NAME, gbo.EXTERNAL_APP_NAME, gb.GRADEBOOK_UID FROM GB_GRADE_RECORD_T gr JOIN GB_GRADABLE_OBJECT_T gbo ON gr.GRADABLE_OBJECT_ID = gbo.ID JOIN gb_gradebook_t gb ON gbo.GRADEBOOK_ID = gb.ID WHERE gr.date_recorded > ?;";
+        String query2 = "SELECT gr.STUDENT_ID, gr.POINTS_EARNED, gr.DATE_RECORDED, gbo.NAME, gbo.POINTS_POSSIBLE, gbo.EXTERNAL_APP_NAME, gb.GRADEBOOK_UID FROM GB_GRADE_RECORD_T gr JOIN GB_GRADABLE_OBJECT_T gbo ON gr.GRADABLE_OBJECT_ID = gbo.ID JOIN GB_GRADEBOOK_T gb ON gbo.GRADEBOOK_ID = gb.ID WHERE gr.date_recorded > ?;";
 
         if (timestamp == null) {
             timestamp = LocalDateTime.now().minus(1, ChronoUnit.WEEKS);
@@ -318,11 +320,12 @@ public class GradesController extends AbstractSakaiApiController {
 
             rs = ps.executeQuery();
 
-            Map<String, List<UserLatestGradeBean>> gradebookMap = new HashMap<>();
+            Map<String, Map<String, UserLatestGradeBean>> siteGradesMap = new HashMap<>();
 
             while (rs.next()) {
                 String studentId = rs.getString("STUDENT_ID");
                 Double pointsEarned = rs.getDouble("POINTS_EARNED");
+                Double pointsPossible = rs.getDouble("POINTS_POSSIBLE");
 
                 Timestamp dateRecordedTimestamp = rs.getTimestamp("DATE_RECORDED");
                 String formattedDateRecorded = null;
@@ -335,31 +338,62 @@ public class GradesController extends AbstractSakaiApiController {
                 String gradableTitle = rs.getString("NAME");
                 String toolId = rs.getString("EXTERNAL_APP_NAME");
 
-                UserLatestGradeBean userLatestGradeBean = new UserLatestGradeBean();
-                userLatestGradeBean.setScore(pointsEarned.toString());
-                userLatestGradeBean.setStudentId(studentId);
-                userLatestGradeBean.setDateRecorded(formattedDateRecorded);
-                userLatestGradeBean.setToolId(toolId);
-                userLatestGradeBean.setGradableTitle(gradableTitle);
+                AssesmentGradeRestBean assesmentGradeRestBean = new AssesmentGradeRestBean();
+                //assesmentGradeRestBean.setDisplayGrade(assesmentGradeRestBean.getDisplayGrade());
+                assesmentGradeRestBean.setToolId(toolId);
+                assesmentGradeRestBean.setTotalPointsPossible(pointsPossible);
+                assesmentGradeRestBean.setPoints(pointsEarned);
+                //assesmentGradeRestBean.setPercentageGrade(String.format("%.2f%%", (pointsEarned / pointsPossible) * 100));
+                assesmentGradeRestBean.setGradableTitle(gradableTitle);
+                assesmentGradeRestBean.setDateRecorded(formattedDateRecorded);
 
-                gradebookMap.computeIfAbsent(gradebookUid, k -> new ArrayList<>()).add(userLatestGradeBean);
+                Map<String, UserLatestGradeBean> userGradesMap = siteGradesMap.computeIfAbsent(gradebookUid, k -> new HashMap<>());
+                UserLatestGradeBean userLatestGradeBean = userGradesMap.computeIfAbsent(studentId, k -> {
+                    UserLatestGradeBean newUserBean = new UserLatestGradeBean();
+                    newUserBean.setStudentId(studentId);
+                    newUserBean.setAssesmentGradeRestBeanList(new ArrayList<>());
+                    return newUserBean;
+                });
+
+                userLatestGradeBean.getAssesmentGradeRestBeanList().add(assesmentGradeRestBean);
+
+                CourseGradeRestBean courseGradeList = null;
+                if (courseGrades) {
+                    courseGradeList = getStudentCourseGrade(gradebookUid, studentId);
+                }
+
+                userLatestGradeBean.setCourseGradeRestBean(courseGradeList);
             }
 
             List<SiteLatestGradesBean> siteLatestGradesList = new ArrayList<>();
-            for (Map.Entry<String, List<UserLatestGradeBean>> entry : gradebookMap.entrySet()) {
-                String siteId = entry.getKey();
-                List<UserLatestGradeBean> userGrades = entry.getValue();
+            for (Map.Entry<String, Map<String, UserLatestGradeBean>> siteEntry : siteGradesMap.entrySet()) {
+                String siteId = siteEntry.getKey();
+                Map<String, UserLatestGradeBean> userGradesMap = siteEntry.getValue();
 
-                userGrades.sort(Comparator.comparing(UserLatestGradeBean::getStudentId));
+                Site site = siteService.getSite(siteId);
+                String courseTitle = site.getTitle();
+                String courseStartDate = site.getProperties().getProperty("publish_date");
+                String courseEndDate = site.getProperties().getProperty("unpublish_date");
 
-                List<CourseGradeRestBean> courseGradeList = null;
+                String formattedStartDate = OffsetDateTime.parse(courseStartDate)
+                        .toLocalDateTime()
+                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
-                if (courseGrades) {
-                    Site site = siteService.getSite(siteId);
-                    courseGradeList = getStudentCourseGradeList(siteId, site.getUsers());
-                }
+                String formattedEndDate = OffsetDateTime.parse(courseEndDate)
+                        .toLocalDateTime()
+                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
-                SiteLatestGradesBean siteLatestGradesBean = new SiteLatestGradesBean(siteId, userGrades, courseGradeList);
+                List<UserLatestGradeBean> userLatestGradeBeans = new ArrayList<>(userGradesMap.values());
+
+                userLatestGradeBeans.sort(Comparator.comparing(UserLatestGradeBean::getStudentId));
+
+                SiteLatestGradesBean siteLatestGradesBean = new SiteLatestGradesBean();
+                siteLatestGradesBean.setId(siteId);
+                siteLatestGradesBean.setCourseTitle(courseTitle);
+                siteLatestGradesBean.setCourseStartDate(formattedStartDate);
+                siteLatestGradesBean.setCourseEndDate(formattedEndDate);
+                siteLatestGradesBean.setUserLatestGradeList(userLatestGradeBeans);
+
                 siteLatestGradesList.add(siteLatestGradesBean);
             }
             return siteLatestGradesList;
@@ -400,6 +434,21 @@ public class GradesController extends AbstractSakaiApiController {
         }
 
         return courseGradeList;
+    }
+
+    private CourseGradeRestBean getStudentCourseGrade(String siteId, String studentId) {
+        try {
+            Map<String, CourseGradeTransferBean> studentCourseGrades = gradingService.getCourseGradeForStudents(siteId, List.of(studentId));
+
+            CourseGradeTransferBean courseGradeTransferBean = studentCourseGrades.get(studentId);
+            if (courseGradeTransferBean != null) {
+                return new CourseGradeRestBean(studentId, courseGradeTransferBean);
+            }
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+            throw new RuntimeException(e.getMessage(), e);
+        }
+        return null;
     }
 
     private CourseGradeRestBean buildCourseGradeRestBean(String userId, CourseGradeTransferBean courseGradeTransferBean) {
