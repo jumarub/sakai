@@ -76,6 +76,9 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 public class GradesController extends AbstractSakaiApiController {
 
+    public final static String SITE_PUBLISH_DATE = "publish_date";
+    public final static String SITE_UNPUBLISH_DATE = "unpublish_date";
+
     @Resource
     private EntityManager entityManager;
 
@@ -372,16 +375,18 @@ public class GradesController extends AbstractSakaiApiController {
 
                 Site site = siteService.getSite(siteId);
                 String courseTitle = site.getTitle();
-                String courseStartDate = site.getProperties().getProperty("publish_date");
-                String courseEndDate = site.getProperties().getProperty("unpublish_date");
+                String courseStartDate = site.getProperties().getProperty(SITE_PUBLISH_DATE);
+                String courseEndDate = site.getProperties().getProperty(SITE_UNPUBLISH_DATE);
 
-                String formattedStartDate = OffsetDateTime.parse(courseStartDate)
-                        .toLocalDateTime()
-                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                String formattedStartDate = courseStartDate != null
+                        ? OffsetDateTime.parse(courseStartDate).toLocalDateTime()
+                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                        : null;
 
-                String formattedEndDate = OffsetDateTime.parse(courseEndDate)
-                        .toLocalDateTime()
-                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                String formattedEndDate = courseEndDate != null
+                        ? OffsetDateTime.parse(courseEndDate).toLocalDateTime()
+                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                        : null;
 
                 List<UserLatestGradeBean> userLatestGradeBeans = new ArrayList<>(userGradesMap.values());
 
