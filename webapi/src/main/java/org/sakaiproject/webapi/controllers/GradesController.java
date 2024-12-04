@@ -297,19 +297,25 @@ public class GradesController extends AbstractSakaiApiController {
     @GetMapping(value = "/grades/latest", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<SiteLatestGradesBean> getLatestGrades(
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm") LocalDateTime timestamp,
+        @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm") LocalDateTime until,
         @RequestParam(required = false, defaultValue = "false") boolean courseGrades
     ) {
 
         checkSakaiSession();
 
-        String query2 = "SELECT gr.STUDENT_ID, gr.POINTS_EARNED, gr.DATE_RECORDED, gbo.NAME, gbo.POINTS_POSSIBLE, gbo.EXTERNAL_APP_NAME, gb.GRADEBOOK_UID FROM GB_GRADE_RECORD_T gr JOIN GB_GRADABLE_OBJECT_T gbo ON gr.GRADABLE_OBJECT_ID = gbo.ID JOIN GB_GRADEBOOK_T gb ON gbo.GRADEBOOK_ID = gb.ID WHERE gr.date_recorded > ?;";
+        String query2 = "SELECT gr.STUDENT_ID, gr.POINTS_EARNED, gr.DATE_RECORDED, gbo.NAME, gbo.POINTS_POSSIBLE, gbo.EXTERNAL_APP_NAME, gb.GRADEBOOK_UID FROM GB_GRADE_RECORD_T gr JOIN GB_GRADABLE_OBJECT_T gbo ON gr.GRADABLE_OBJECT_ID = gbo.ID JOIN GB_GRADEBOOK_T gb ON gbo.GRADEBOOK_ID = gb.ID WHERE gr.date_recorded > ? AND gr.date_recorded <= ?;";
 
         if (timestamp == null) {
             timestamp = LocalDateTime.now().minus(1, ChronoUnit.WEEKS);
         }
 
+        if (until == null) {
+            until = LocalDateTime.now();
+        }
+
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         String formattedDate = timestamp.format(formatter);
+        String formattedUntil = until.format(formatter);
 
         Connection conn = null;
         PreparedStatement ps = null;
@@ -320,6 +326,7 @@ public class GradesController extends AbstractSakaiApiController {
             conn.setReadOnly(true);
             ps = conn.prepareStatement(query2, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
             ps.setTimestamp(1, java.sql.Timestamp.valueOf(formattedDate));
+            ps.setTimestamp(2, java.sql.Timestamp.valueOf(formattedUntil));
 
             rs = ps.executeQuery();
 
