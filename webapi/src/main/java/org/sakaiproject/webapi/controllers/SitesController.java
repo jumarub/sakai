@@ -17,21 +17,29 @@ import org.apache.commons.lang3.StringUtils;
 
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.coursemanagement.api.CourseManagementService;
+import org.sakaiproject.entity.api.ResourceProperties;
+import org.sakaiproject.exception.IdInvalidException;
+import org.sakaiproject.exception.IdUnusedException;
+import org.sakaiproject.exception.IdUsedException;
+import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.messaging.api.UserMessagingService;
 import org.sakaiproject.messaging.api.model.UserNotification;
 import org.sakaiproject.portal.api.PortalService;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.site.api.Site;
+import org.sakaiproject.site.api.SitePage;
 import org.sakaiproject.site.api.ToolConfiguration;
 import org.sakaiproject.tool.api.Session;
+import org.sakaiproject.tool.api.ToolManager;
 import org.sakaiproject.user.api.UserNotDefinedException;
-
+import org.sakaiproject.webapi.beans.TemplateRestBean;
 import org.springframework.http.MediaType;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -63,8 +71,45 @@ public class SitesController extends AbstractSakaiApiController {
 	@Autowired
 	private PortalService portalService;
 
+    @Autowired
+    private ToolManager toolManager;
+
 	@Autowired
 	private UserMessagingService userMessagingService;
+
+    @GetMapping(value = "/sites/createTemplate", produces = MediaType.APPLICATION_JSON_VALUE)
+    public String postMethodName(@RequestBody TemplateRestBean template) throws IdUnusedException {
+        //checkSakaiSession();
+
+        try {
+            Site site = siteService.addSite(template.getId(), "course");
+            site.setTitle(template.getTitle());
+            site.setDescription(template.getDescription());
+
+            ResourceProperties siteProperties = site.getProperties();
+            siteProperties.addProperty("template", "true");
+            siteProperties.addProperty("publish_type", "scheduled");
+            siteProperties.addProperty("publish_date", template.getPublishDate());
+            siteProperties.addProperty("unpublish_date", template.getUnpublishDate());
+
+            SitePage sitePageEdit = null;
+            sitePageEdit = site.addPage();
+            sitePageEdit.setTitle("");
+            sitePageEdit.setLayout(0);
+            sitePageEdit.setPopup(false);
+            sitePageEdit.setPosition(1);
+
+            ToolConfiguration tool = sitePageEdit.addTool();
+            tool.setTool("", toolManager.getTool("sakai.siteinfo"));
+
+            siteService.save(site);
+        } catch (IdInvalidException | IdUsedException | PermissionException e) {
+            log.error("Error adding site", e);
+            return "Error adding site: " + e.getMessage();
+        }
+        
+        return "SUUU";
+    }
 
 	@GetMapping(value = "/users/{userId}/sites", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, List<Map<String, Object>>> getSites(@PathVariable String userId, @RequestParam Optional<Boolean> pinned)
