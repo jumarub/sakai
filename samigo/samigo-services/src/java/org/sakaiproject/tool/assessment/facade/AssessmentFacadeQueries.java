@@ -793,6 +793,25 @@ public class AssessmentFacadeQueries extends HibernateDaoSupport implements Asse
 		return assessmentList;
 	}
 
+	public List<Long> getIdsOfAllActiveAssessmentsByAgent(final String siteAgentId) {
+		HibernateCallback<List<Long>> hcb = session -> {
+			Query<Long> q = session.createQuery(
+				"select a.assessmentBaseId " +
+				"from AssessmentData a, AuthorizationData z " +
+				"where a.status = :status " +
+				"and a.assessmentBaseId = z.qualifierId " +
+				"and z.functionId = :fid " +
+				"and z.agentIdString = :site",
+				Long.class
+			);
+			q.setParameter("status", 1); // activo
+			q.setParameter("fid", "EDIT_ASSESSMENT");
+			q.setParameter("site", siteAgentId);
+			return q.list();
+		};
+		return getHibernateTemplate().execute(hcb);
+	}
+
 	public AssessmentFacade getBasicInfoOfAnAssessment(Long assessmentId) {
 		AssessmentData a = (AssessmentData) getHibernateTemplate().load(
 				AssessmentData.class, assessmentId);

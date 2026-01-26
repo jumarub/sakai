@@ -198,6 +198,8 @@ public interface PublishedAssessmentFacadeQueriesAPI
   public List<PublishedAssessmentFacade> getBasicInfoOfAllPublishedAssessments(String orderBy, boolean ascending, String siteId);
 
   public List<PublishedAssessmentFacade> getBasicInfoOfAllPublishedAssessments2(String orderBy, boolean ascending, String siteId);
+
+  public List<Long> getIdsOfAllPublishedAssessments(final String siteAgentId);
   
   /**
    * return an array list of the last AssessmentGradingFacade per assessment that

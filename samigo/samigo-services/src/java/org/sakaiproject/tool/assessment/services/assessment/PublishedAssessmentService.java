@@ -104,6 +104,18 @@ public class PublishedAssessmentService extends AssessmentService{
 	  getBasicInfoOfAllPublishedAssessments2(orderBy, ascending, siteId);
   }
 
+  public void getBasicInfoOfAllPublishedAssessments() {
+    String siteAgentId = AgentFacade.getCurrentSiteId();
+
+    // llamamos al método que solo devuelve IDs
+    List<Long> ids = PersistenceService.getInstance()
+            .getPublishedAssessmentFacadeQueries()
+            .getIdsOfAllPublishedAssessments(siteAgentId);
+
+    System.out.println(ids);
+  }
+
+
   public List getAllActivePublishedAssessments(String orderBy) {
       return getAllPublishedAssessments(orderBy, PublishedAssessmentFacade.ACTIVE_STATUS);
   }

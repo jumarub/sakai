@@ -139,6 +139,8 @@ public interface AssessmentFacadeQueriesAPI {
 	public List<AssessmentFacade> getBasicInfoOfAllActiveAssessmentsByAgent(String orderBy,
 																			String siteAgentId);
 
+	public List<Long> getIdsOfAllActiveAssessmentsByAgent(final String siteAgentId);
+
 	public AssessmentFacade getBasicInfoOfAnAssessment(Long assessmentId);
 	
 	public AssessmentFacade getBasicInfoOfAnAssessmentFromSectionId(Long sectionId);

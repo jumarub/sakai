@@ -252,6 +252,18 @@ public class AssessmentService {
 																					// paging
 	}
 
+	public void getBasicInfoOfAllActiveAssessments() {
+		String siteAgentId = AgentFacade.getCurrentSiteId();
+
+		// llamamos al método que solo devuelve IDs
+		List<Long> ids = PersistenceService.getInstance()
+				.getAssessmentFacadeQueries()
+				.getIdsOfAllActiveAssessmentsByAgent(siteAgentId);
+
+		System.out.println(ids);
+	}
+
+
 	public List<AssessmentFacade> getAllAssessments(int pageSize, int pageNumber,
 			String orderBy) {
 		try {

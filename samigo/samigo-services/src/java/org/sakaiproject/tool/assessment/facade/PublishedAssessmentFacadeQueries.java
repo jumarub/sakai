@@ -1468,6 +1468,27 @@ public class PublishedAssessmentFacadeQueries extends HibernateDaoSupport implem
 		return pubList;
 	}
 
+	public List<Long> getIdsOfAllPublishedAssessments(final String siteAgentId) {
+		HibernateCallback<List<Long>> hcb = session -> {
+			Query<Long> q = session.createQuery(
+				"select p.publishedAssessmentId " +
+				"from PublishedAssessmentData p, AuthorizationData z " +
+				"where p.publishedAssessmentId = z.qualifierId " +
+				"and z.functionId = :functionId " +
+				"and z.agentIdString = :siteId " +
+				"and (p.status = :activeStatus or p.status = :editStatus)",
+				Long.class
+			);
+			q.setParameter("functionId", "OWN_PUBLISHED_ASSESSMENT");
+			q.setParameter("siteId", siteAgentId);
+			q.setParameter("activeStatus", 1);
+			q.setParameter("editStatus", 3);
+			return q.list();
+		};
+		return getHibernateTemplate().execute(hcb);
+	}
+
+
 	
 	/**
 	 * return an array list of the last AssessmentGradingFacade per assessment

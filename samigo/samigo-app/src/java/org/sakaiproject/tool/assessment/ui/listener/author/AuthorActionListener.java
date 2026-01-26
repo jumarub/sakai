@@ -186,6 +186,18 @@ public class AuthorActionListener
   public void prepareAssessmentsList(AuthorBean author, AuthorizationBean authorization, AssessmentService assessmentService, GradingService gradingService, PublishedAssessmentService publishedAssessmentService) {
 		// #2 - prepare core assessment list
 		author.setCoreAssessmentOrderBy(AssessmentFacadeQueries.TITLE);
+
+		long start = System.nanoTime();
+		assessmentService.getBasicInfoOfAllActiveAssessments();
+		long end = System.nanoTime();
+		System.out.println("Tiempo para exámenes no publicados: " + ((end - start) / 1_000_000) + " ms");
+
+		start = System.nanoTime();
+		publishedAssessmentService.getBasicInfoOfAllPublishedAssessments();
+		end = System.nanoTime();
+		System.out.println("Tiempo para exámenes publicados: " + ((end - start) / 1_000_000) + " ms");
+
+		
 		List assessmentList = assessmentService.getBasicInfoOfAllActiveAssessments(
 						AssessmentFacadeQueries.TITLE, author.isCoreAscending());
 		Iterator iter = assessmentList.iterator();
